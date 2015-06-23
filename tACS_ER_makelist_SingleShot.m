@@ -1,5 +1,5 @@
 
-function [tacs_er] = tACS_ER_makelist(thePath)
+function [tacs_er] = tACS_ER_makelist_SingleShot(thePath)
 
 % make lists for tacs encoding & retrieval (tacs_er) experiment
 
