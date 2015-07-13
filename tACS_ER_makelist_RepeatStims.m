@@ -1,12 +1,44 @@
 
-function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
+function [tacs_er] = tACS_ER_makelist_RepeatStims(subjNum, thePath)
 
 % make lists for tacs encoding & retrieval (tacs_er) experiment
 % This design:
 % 1) all stimuli is presented twice, once per encoding block
 % 2) responses are made to cue. counter balance cue responses per stimuli
 % -> tom cruise: block 1. yes, block 2 no.
+
+% Important variables
+% subjNum       -> subject  ID
+% thePath       -> path for all stimulus and data directories
 %
+% nEncStim      -> # of UNIQUE encoding stimuli
+% nEncTrials    -> # of TOTAL trials (should be multiple of nEncStim)
+% nEncCond      -> # of conditions at encoding (that are critical for retrieval)
+% nEncBlocks    -> # of encoding blocks
+%
+% nRetTrials    -> # of TOTAL retrieval trials
+% nFoilTrials   -> # of NEW trials (foils)
+% nRetConds     -> # of retrieval conditions
+% nRetBlocks    -> # of retrieval blocks
+% nRetCondTrials-> VECTOR of # trials per Retrieal Condition
+% maxNumConsecutiveOld -> MAX # of consecutive old trials 
+%
+% RandStream    -> random stream seed
+%
+% EncStimType       -> VECTOR trial of indicating type (1  faces, 2 scene)
+% EncStimTypeIDs    -> {face,scene}
+% EncCondCodeIDs    -> {'Face0','Face90','Face180','Scn0','Scn90','Scn180'}
+% EncCondTrialCode  -> VECTOR trial encoding indicating EncCondCodeID
+% EncStimNames      -> VECTOR trial stimulus ID 
+% EncStimCue        -> VECTOR trial code for cue ID
+% EncBlockID        -> VECTOR trial block ID
+%
+% RetCondIDs        -> {'OldFace','OldScene','NewFace','NewScene'};
+% RetCondTrialCode  -> VECTOR trial 1:4, indicating RetCondID
+% RetStimNames      -> VECTOR trial of retrieaval IDs
+% RetBlockID        -> VECTOR of trial block ID
+%
+% Stimuli           -> key, matrix map of stimuli's names to image matrix.
 
 %% Set-up 
 
@@ -18,6 +50,7 @@ nEncBlocks = 2;
 nEncTrials = nEncBlocks*nEncStim;
 nEncConds  = 6;     % faces, scenes x phase (3 different phases)
 nCueTypes  = 2;
+stimSize   = [225 225];
 
 nRetTrials = 360;   % encoding trials + retrieval trials
 nFoilTrials =nRetTrials-nEncStim;
@@ -37,9 +70,12 @@ end
 cd(fullfile(thePath.stim,'landmarks'));
 temp = dir('*.jpg');
 count = 1;
+ScenesMat = cell(numel(temp),1);
 for n = 1:size(temp,1)
-    try
-        imread(temp(n).name); %check if readable
+    ScenesMat{n} = zeros(stimSize(1),stimSize(2),'uint8');
+    try        
+        x=imread(temp(n).name); %check if readable        
+        ScenesMat{n} = x(:,:,1);
         SceneNames(count) = temp(n);
         count = count + 1;
     catch
@@ -49,14 +85,17 @@ end
 
 %get the names in a cell array and shuffle
 SceneNames = {SceneNames.name}';
-SceneNames = Shuffle(SceneNames);
+[SceneNames,index] = Shuffle(SceneNames);
+ScenesMat = ScenesMat(index);
 
 cd(fullfile(thePath.stim,'people'));
 temp = dir('*.jpg');
 count = 1;
+FacesMat = cell(numel(temp),1);
 for n = 1:size(temp,1)
     try
-        imread(temp(n).name);  %check if readable
+        x=imread(temp(n).name);  %check if readable
+        FacesMat{n} = x(:,:,1);
         FaceNames(count) = temp(n);
         count = count + 1;
     catch
@@ -65,8 +104,10 @@ for n = 1:size(temp,1)
 end
 %get the names in a cell array and shuffle
 FaceNames = {FaceNames.name}';
-FaceNames = Shuffle(FaceNames);
+[FaceNames,index] = Shuffle(FaceNames);
+FacesMat = FacesMat(index);
 
+StimObj = containers.Map( [FaceNames; SceneNames], [FacesMat; ScenesMat]);
 %% Encoding
 % Equal numbers of faces and scenes: #N encoding trials/2 per type
 % Each block will have one of each of stimuli, for a total of # of blocks x
@@ -216,8 +257,8 @@ while true
         break
     end
     counter=counter+1;
-    if counter >1000
-        error('could not arrive at a stable sequence in 1000 attempts')
+    if counter >10000
+        error('could not arrive at a stable sequence in 10000 attempts')
     end
 end
 % make sure that each condition is equally represented
@@ -238,6 +279,8 @@ RetStimNames(RetCondTrialCode==4) = Shuffle(FoilScenes); % new scenes
 
 %% store necessary variables
 tacs_er = [];
+tacs_er.subjNum = subjNum;
+tacs_er.thePath = thePath;
 
 % parameterts for making stimuli list
 tacs_er.nEncStim = nEncStim;
@@ -254,20 +297,21 @@ tacs_er.maxNumConsecutiveOld = maxNumConsecutiveOld;
 tacs_er.RandStream = s;
 
 % encoding
-tacs_er.EncStimType = EncStimType;
-tacs_er.EncStimTypeIDs = EncStimTypeIDs;
-tacs_er.EncCondTrialCode = EncCondTrialCode;
-tacs_er.EncCondCodeIDs = EncCondCodeIDs;
-tacs_er.EncStimNames  = EncStimNames;
-tacs_er.EncStimCue   = EncStimCue;
-tacs_er.EncBlockID   = EncBlockID;
+tacs_er.EncStimType     = EncStimType;
+tacs_er.EncStimTypeIDs  = EncStimTypeIDs;
+tacs_er.EncCondTrialCode= EncCondTrialCode;
+tacs_er.EncCondCodeIDs  = EncCondCodeIDs;
+tacs_er.EncStimNames    = EncStimNames;
+tacs_er.EncStimCue      = EncStimCue;
+tacs_er.EncBlockID      = EncBlockID;
 
 % retrieval
-tacs_er.RetCondIDs = RetCondIDs;
-tacs_er.RetCondTrialCode = RetCondTrialCode;
-tacs_er.RetStimNames = RetStimNames;
-tacs_er.RetBlockID=RetBlockID;
-tacs_er.nRetCondTrials = nRetCondTrials;
+tacs_er.RetCondIDs      = RetCondIDs;
+tacs_er.RetCondTrialCode= RetCondTrialCode;
+tacs_er.RetStimNames    = RetStimNames;
+tacs_er.RetBlockID      = RetBlockID;
+tacs_er.nRetCondTrials  = nRetCondTrials;
+
 
 % sanity check: verify that old labels match stimuli
 assert(sum(ismember(tacs_er.RetStimNames,tacs_er.EncStimNames) == ...
@@ -278,8 +322,9 @@ assert(sum(ismember(tacs_er.RetStimNames,tacs_er.EncStimNames) == ...
 tacs_er.EncCondAtRet = zeros(tacs_er.nRetTrials,1);
 tacs_er.EncCondAtRet(i>0) = tacs_er.EncCondTrialCode(i(i>0));
 
-%%
-dfwef
+% Stimulus Object
+tacs_er.Stimuli = StimObj;
+
 cd(thePath.main)
 
 end

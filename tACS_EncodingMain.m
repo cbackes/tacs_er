@@ -1,5 +1,11 @@
 
 function msg=tACS_EncodingMain()
+% core script for stimulus presentation on tACS Encoding.
+%
+%
+%
+
+
 % Clear the workspace
 close all;
 sca;
