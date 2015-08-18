@@ -1,5 +1,5 @@
 
-function [out,msg]=tACS_EncodingMain_CueResponse(tacs_er)
+function [out,msg]=tACS_RetrievalMain(tacs_er)
 % core script for stimulus presentation on tACS Encoding.
 
 % clear all the screens
@@ -20,48 +20,36 @@ PURPLE  = [.5 0.1 0.5];
 out = [];
 
 % Presentation Parameters
-PresParams = [];
-PresParams.stimFrequency        = 6;
-PresParams.stimDurationInCycles = 0.5;
-PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDurationInCycles;
-PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
-%PresParams.noiseFrameInterval   = 1; % define
-%PresParams.waitFrameInterval    = 1; % define
+PresParams  = [];
+PresParams.stimDurationInSecs   = 3;
 PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
-PresParams.MaxResponseTime      = 1;       % maximum to make perceptual decision
+PresParams.MaxResponseTime      = 3;       % maximum to make recognition decision
 
 % noise mask size -> should be the size of all the stimuli
 PresParams.nsMaskSize = [255 255];
 
-% determine cue response mapping depending on subject number and active
-% Keyboard.
-laptopResponseKeys = ['k','l'];
-keypadResponseKeys = ['1','2'];
+% determine direction of confidence bar depending on subject number
+confBarLimits = {'old','new'};
 if mod(tacs_er.subjNum,2)
-    responseMap = [1,2];
+    responseMap = [1,2]; % old <-> new
 else
-    responseMap = [2,1];
+    responseMap = [2,1]; % new <-> old
 end
-laptopResponseKeys = laptopResponseKeys(responseMap);
-keypadResponseKeys = keypadResponseKeys(responseMap);
-
-PresParams.CueColorsID{1} = RED;
-PresParams.CueColorsID{2} = BLUE;
-
+confBarLimits = confBarLimits(responseMap);
 
 out.PresParams  = PresParams;
 out.expInfo     = tacs_er;
+out.confBarLimits = confBarLimits;
 
-stimNames = tacs_er.EncStimNames;
+stimNames = tacs_er.RetStimNames;
 nTrials   = numel(stimNames);
 
 %%
 
 % Initialize trial timing structure
 TimingInfo = [];
-TimingInfo.preStimMaskFlip = cell(nTrials,1);
-TimingInfo.stimPresFlip = cell(nTrials,1);
-TimingInfo.postStimMaskFlip = cell(nTrials,1);
+TimingInfo.preStimFixFlip   = cell(nTrials,1);
+TimingInfo.stimPresFlip     = cell(nTrials,1);
 TimingInfo.trialRT          = zeros(nTrials,1);
 TimingInfo.trialKeyPress    = cell(nTrials,1);
 
@@ -76,15 +64,7 @@ try
     KbQueueCreate(activeKeyboardID);
     % Start keyboard queue
     KbQueueStart(activeKeyboardID);
-    
-    if laptopKeyboardID==activeKeyboardID          
-          PresParams.RespToCue1 = laptopResponseKeys(1);
-          PresParams.RespToCue2 = laptopResponseKeys(2);
-    else
-        PresParams.RespToCue1 = keypadResponseKeys(1);
-        PresParams.RespToCue2 = keypadResponseKeys(2);
-    end
-    
+
     % initialie window
     [window, windowRect] = initializeScreen;
     screenXpixels = windowRect(3);
@@ -110,15 +90,6 @@ try
     
     % Set the line width for our fixation cross
     lineWidthPix = 4;
-    %pre-make noise masks
-    Nmasks = 50;
-    noiseTextures = cell(Nmasks,1);
-    for ii = 1:Nmasks
-        noiseTextures{ii} = Screen('MakeTexture', window, rand(PresParams.nsMaskSize(1),PresParams.nsMaskSize(2)));
-        tstring = sprintf('Loading Noise Masks %g %%', floor(ii/Nmasks*100));
-        DrawFormattedText(window,tstring,'center','center',255,50);
-        Screen('Flip',window);
-    end
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
@@ -128,38 +99,22 @@ try
         DrawFormattedText(window,tstring,'center','center',255,50);
         Screen('Flip',window);
     end
-    
-    % Set encoding cue color
-    cueColors = zeros(nTrials,3);
-    for ii = 1:nTrials
-        if tacs_er.EncStimCue(ii)==1
-            cueColors(ii,:) = PresParams.CueColorsID{1};
-        else
-            cueColors(ii,:) = PresParams.CueColorsID{2};
-        end
-    end    
+ 
     
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
-%     tstring = ['Instructions\n\n' ...
-%         'You will be presented with a PURPLE Fixation Cross. '...
-%         'The Fixation cross will then turn either RED or BLUE, with a background image of faces and landmarks. '...
-%         'Your task is to respond with ' PresParams.RespToCue1 ' for the RED Fixation and '...
-%         'with ' PresParams.RespToCue2 ' for BLUE Fixations. ' ...
-%         'You will have ' num2str(PresParams.MaxResponseTime ) ' second to respond, and please do so '...
-%         'as quickly and as accurately as possible. \n'...
-%         'Press ''' resumeKey ''' to begin the experiment.'];
-     tstring = ['Instructions\n\n' ...
-        'You will be presented with a PURPLE Fixation Cross. '...        
-        'Your task is to respond with ' PresParams.RespToCue1 ' for the RED Fixation and '...
-        'with ' PresParams.RespToCue2 ' for BLUE Fixations. ' ...
-        'You will have ' num2str(PresParams.MaxResponseTime ) ' second to respond '...
+    tstring = ['Instructions\n\n' ...
+        'You will be presented with images that you might recognized from the previous experiment. '...
+        'Your task is to indetify which images were presented before, '...
+        'and which ones are new and indicate your confidence by clicking the confidence bar.'...
+        'The confidence bar goes from ' confBarLimits{1} ' to ' confBarLimits{2} '.',...
+        ' You will have ' num2str(PresParams.MaxResponseTime ) ' seconds to respond, and please do so '...
         'as quickly and as accurately as possible. \n'...
         'Press ''' resumeKey ''' to begin the experiment.'];
-
     
-    DrawFormattedText(window,tstring, 'wrapat', 'center', 255, 40, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
+    
+    DrawFormattedText(window,tstring, 'wrapat', 'center', 255, 40, [],[],[],[],[xCenter*0.2,0,screenXpixels*0.6,screenYpixels]);
     Screen('Flip',window);
     
     % resume if Resume Key is pressed
@@ -182,12 +137,11 @@ try
         % empty flip var
         flip     = [];
         
-        % Pre-stimulus noise mask (variable ITI); store the first one
-        Screen('DrawTexture', window, noiseTextures{randi(Nmasks)}, [], [], 0);
+        % Pre-stimulus noise mask (variable ITI); store the first one        
         Screen('DrawLines', window, fixCrossCoords,lineWidthPix, PURPLE, [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window);
-        TimingInfo.preStimMaskFlip{tt}=flip;
+        TimingInfo.preStimFixFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
         
         for ii=1:(ITIsFrames(tt)-1)

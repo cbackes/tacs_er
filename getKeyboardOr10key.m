@@ -42,10 +42,10 @@ while 1
     elseif choice==2
         activeKeyID = tenkey; 
         localKeyID = lapkey;
-%         pauseKey = '/';
-%         resumeKey = '*';
-        pauseKey = 'p';
-        resumeKey = 'r';
+         pauseKey = '/';
+         resumeKey = '*';
+%        pauseKey = 'p';
+%        resumeKey = 'r';
         break
     end
 end
