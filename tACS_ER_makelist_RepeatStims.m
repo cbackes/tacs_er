@@ -1,6 +1,5 @@
 
-function [tacs_er] = tACS_ER_makelist_RepeatStims(subjNum, thePath)
-
+function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 % make lists for tacs encoding & retrieval (tacs_er) experiment
 % This design:
 % 1) all stimuli is presented twice, once per encoding block
@@ -21,7 +20,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(subjNum, thePath)
 % nRetConds     -> # of retrieval conditions
 % nRetBlocks    -> # of retrieval blocks
 % nRetCondTrials-> VECTOR of # trials per Retrieal Condition
-% maxNumConsecutiveOld -> MAX # of consecutive old trials 
+% maxNumConsecutiveOld -> MAX # of consecutive old trials
 %
 % RandStream    -> random stream seed
 %
@@ -29,7 +28,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(subjNum, thePath)
 % EncStimTypeIDs    -> {face,scene}
 % EncCondCodeIDs    -> {'Face0','Face90','Face180','Scn0','Scn90','Scn180'}
 % EncCondTrialCode  -> VECTOR trial encoding indicating EncCondCodeID
-% EncStimNames      -> VECTOR trial stimulus ID 
+% EncStimNames      -> VECTOR trial stimulus ID
 % EncStimCue        -> VECTOR trial code for cue ID
 % EncBlockID        -> VECTOR trial block ID
 %
@@ -40,7 +39,13 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(subjNum, thePath)
 %
 % Stimuli           -> key, matrix map of stimuli's names to image matrix.
 
-%% Set-up 
+%------------------------------------------------------------------------%
+% Author:       Alex Gonzalez
+% Created:      Aug 20th, 2015
+% LastUpdate:   Aug 20th, 2015
+%------------------------------------------------------------------------%
+
+%% Set-up
 
 % parameter list
 nUniqueFaceStimuli = 120;
@@ -48,7 +53,9 @@ nUniqueSceneStimuli = 120;
 nEncStim    = nUniqueSceneStimuli+ nUniqueFaceStimuli;
 nEncBlocks = 2;
 nEncTrials = nEncBlocks*nEncStim;
-nEncConds  = 6;     % faces, scenes x phase (3 different phases)
+nEncPhases = 6;
+nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
+EncPhases  = 0:(360/nEncPhases):359;
 nCueTypes  = 2;
 stimSize   = [225 225];
 
@@ -62,8 +69,6 @@ maxNumConsecutiveOld = 8;   % maximum number of old trials in a row
 s = RandStream.create('mt19937ar','seed',sum(100*clock));
 if strfind(version,'R2014b')>0
     RandStream.setGlobalStream(s)
-else
-    RandStream.setDefaultStream(s);
 end
 
 %% load data names
@@ -73,8 +78,8 @@ count = 1;
 ScenesMat = cell(numel(temp),1);
 for n = 1:size(temp,1)
     ScenesMat{n} = zeros(stimSize(1),stimSize(2),'uint8');
-    try        
-        x=imread(temp(n).name); %check if readable        
+    try
+        x=imread(temp(n).name); %check if readable
         ScenesMat{n} = x(:,:,1);
         SceneNames(count) = temp(n);
         count = count + 1;
@@ -173,22 +178,18 @@ for bb = 1:nEncBlocks
 end
 
 % assign encoding conditions
-% six conditions 2 x 3 design
-% 1) faces at 0deg
-% 2) faces at 90deg
-% 3) faces at 180deg
-% 4) scenes at 0deg
-% 5) scenes at 90deg
-% 6) scenes at 180deg
+% max 12 condtions for a 2 x 6 design
 %
-% ** Note, not counterbalancing by stimuli at the moment, that would have 
+% ** Note, not counterbalancing by stimuli at the moment, that would have
 % to be done across subjects. **
-
 nEncCondTrials      = nEncTrials/nEncConds;
 nEncCondBlockTrials = nEncCondTrials/nEncBlocks;
 EncCondTrialCode    = zeros(nEncTrials,1);
-EncCondCodeIDs      = {'Face0','Face90','Face180','Scn0','Scn90','Scn180'};
-faceConds = 1:3; sceneConds = 4:6;
+faceConds = 1:(nEncConds/2);
+sceneConds = (nEncConds/2+1):nEncConds;
+EncCondCodeIDs = cell(nEncConds,1);
+EncCondCodeIDs(faceConds) = strcat('Face',cellfun(@num2str,num2cell(EncPhases'),'UniformOutput',false));
+EncCondCodeIDs(sceneConds) = strcat('Scn',cellfun(@num2str,num2cell(EncPhases'),'UniformOutput',false));
 
 if mod(nEncCondBlockTrials,1)~=0
     error('uneven encoding condition trials')
@@ -240,7 +241,7 @@ counter = 1;
 while true
     RetCondTrialCode = zeros(nRetTrials,1);
     RetBlockID = zeros(nRetTrials,1);
-    for rr = 1:nRetBlocks        
+    for rr = 1:nRetBlocks
         TrialBlockID = ((rr-1)*nRetTrialsBlock+1):rr*nRetTrialsBlock;
         availableTrials = TrialBlockID;
         for cc = 1:nRetConds
@@ -263,7 +264,7 @@ while true
 end
 % make sure that each condition is equally represented
 assert(sum(histc(RetCondTrialCode,1:nRetConds)==nRetCondTrials)==nRetConds,'unequal number of trials produced')
-%% assign stimuli based on retrieval condition 
+%% assign stimuli based on retrieval condition
 
 RetStimNames = cell(nRetTrials,1);
 temp         = setdiff(FaceNames,EncFaces);
@@ -279,13 +280,16 @@ RetStimNames(RetCondTrialCode==4) = Shuffle(FoilScenes); % new scenes
 
 %% store necessary variables
 tacs_er = [];
-tacs_er.subjNum = subjNum;
-tacs_er.thePath = thePath;
+tacs_er.subjNum     = thePath.subjNum;
+tacs_er.exptType    = thePath.exptType;
+tacs_er.thePath     = thePath;
 
 % parameterts for making stimuli list
 tacs_er.nEncStim = nEncStim;
 tacs_er.nEncTrials = nEncTrials;
 tacs_er.nEncConds  = nEncConds;
+tacs_er.nEncPhases = nEncPhases;
+tacs_er.EncPhases  = EncPhases;
 tacs_er.nEncBlocks = nEncBlocks;
 
 tacs_er.nRetTrials = nRetTrials;
@@ -324,8 +328,26 @@ tacs_er.EncCondAtRet(i>0) = tacs_er.EncCondTrialCode(i(i>0));
 
 % Stimulus Object
 tacs_er.Stimuli = StimObj;
-
 cd(thePath.main)
+
+% Save into subjects path
+fileName = 'tacs_er_task.mat';
+if ~exist([thePath.subjectPath '/' fileName],'file')
+    save([thePath.subjectPath '/' fileName],'tacs_er')
+else
+    if ~(thePath.subjNum==0)
+        warning('tacs task for this subject already created')
+        while 1
+            s = input('Overwrite? (Y/N)','s');
+            if strcmp(s,'Y')
+                save([thePath.subjectPath '/' fileName],'tacs_er')
+                break
+            elseif strcmp(s,'N')
+                break
+            end
+        end
+    end
+end
 
 end
 

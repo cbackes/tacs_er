@@ -8,7 +8,10 @@ KbQueueCreate(activeKeyboardID);
 % Start keyboard queue
 KbQueueStart(activeKeyboardID);
 
-WaitTillResumeKey(resumeKey,activeKeyboardID)
+[secs,key]=KbQueueWait2(activeKeyboardID);
+
+e
+%WaitTillResumeKey(resumeKey,activeKeyboardID)
 
 end
 %%

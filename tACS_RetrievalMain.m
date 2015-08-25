@@ -1,46 +1,67 @@
 
-function [out,msg]=tACS_RetrievalMain(tacs_er)
-% core script for stimulus presentation on tACS Encoding.
+function [ret_out,msg]=tACS_RetrievalMain(thePath)
+% tACS experiment image recognition memory presentation script
+% This script takes the 'tacs_er' structure that contains the stimuli and
+% order that shall be used at retrieval. These images are then loaded and
+% saved prior to presentation. The task is recognition memory.
+% Subjects can respond to images as 'old', 'new', or 'unsure'. If the
+% subjects respond old or new, they are then given a confidence scale to
+% indicate their confidence in the decision.
+%
+%------------------------------------------------------------------------%
+% Author:       Alex Gonzalez
+% Created:      Aug 20th, 2015
+% LastUpdate:   Aug 20th, 2015
+% TO DO :       (1)EEG markers
+%               (2)Saving the data
+%------------------------------------------------------------------------%
 
 % clear all the screens
 close all;
 sca;
 
+% load the task
+fileName = strcat(thePath.subjectPath,'/tacs_er_task.mat');
+if exist(fileName,'file')
+    load(fileName);
+else
+    error('no task created, must run encoding task first!')
+end
+
 % Define colors
 WHITE   = [1 1 1];
-BLACK   = [0 0 0];
-GREY    = WHITE/2;
-RED     = [0.77 0.05 0.2];
 BLUE    = [0.2 0.1385 1];
 PURPLE  = [.5 0.1 0.5];
 
 %PsychDebugWindowConfiguration;
-
-% output structure
-out = [];
 
 % Presentation Parameters
 PresParams  = [];
 PresParams.stimDurationInSecs   = 3;
 PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
 PresParams.MaxResponseTime      = 3;       % maximum to make recognition decision
+PresParams.MaxConfDecInSecs     = 5; % max time to make confidene decision
+PresParams.SaveEvNtrials        = 20; % save progress every X# of trials.
+PresParams.lineWidthPix         = 4;       % Set the line width for our fixation cross
 
-% noise mask size -> should be the size of all the stimuli
-PresParams.nsMaskSize = [255 255];
+% determine numbers for recognition decision
+% depending on subject number and active Keyboard.
+laptopResponseKeys = ['j','k','l'];
+keypadResponseKeys = ['1','2','3'];
+RespConds         = {'old','unsure','new'};
 
-% determine direction of confidence bar depending on subject number
-confBarLimits = {'old','new'};
 if mod(tacs_er.subjNum,2)
-    responseMap = [1,2]; % old <-> new
+    responseMap = [1,2,3];
 else
-    responseMap = [2,1]; % new <-> old
+    responseMap = [3,2,1];
 end
-confBarLimits = confBarLimits(responseMap);
+laptopResponseKeys = laptopResponseKeys(responseMap);
+keypadResponseKeys = keypadResponseKeys(responseMap);
+RespConds           = RespConds (responseMap);
 
-out.PresParams  = PresParams;
-out.expInfo     = tacs_er;
-out.confBarLimits = confBarLimits;
+PresParams.RespConds = RespConds;
 
+% get the IDs of the trials
 stimNames = tacs_er.RetStimNames;
 nTrials   = numel(stimNames);
 
@@ -50,8 +71,10 @@ nTrials   = numel(stimNames);
 TimingInfo = [];
 TimingInfo.preStimFixFlip   = cell(nTrials,1);
 TimingInfo.stimPresFlip     = cell(nTrials,1);
-TimingInfo.trialRT          = zeros(nTrials,1);
+TimingInfo.trialRT          = nan(nTrials,1);
 TimingInfo.trialKeyPress    = cell(nTrials,1);
+TimingInfo.CondResp         = cell(nTrials,1);
+TimingInfo.Confidence       = nan(nTrials,1);
 
 try
     
@@ -59,12 +82,18 @@ try
     % Screen and additional presentation parameters
     %---------------------------------------------------------------------%
     % Get keyboard number
-    [activeKeyboardID, laptopKeyboardID, pauseKey, resumeKey] = getKeyboardOr10key;    
+    [activeKeyboardID, laptopKeyboardID, pauseKey, resumeKey] = getKeyboardOr10key;
     % initialize Keyboard Queue
     KbQueueCreate(activeKeyboardID);
     % Start keyboard queue
     KbQueueStart(activeKeyboardID);
-
+    
+    % get correct mapping to keyboard
+    if laptopKeyboardID==activeKeyboardID
+        PresParams.RespButtons  = laptopResponseKeys;
+    else
+        PresParams.RespButtons = keypadResponseKeys;
+    end
     % initialie window
     [window, windowRect] = initializeScreen;
     screenXpixels = windowRect(3);
@@ -79,147 +108,225 @@ try
     % Query the frame duration
     ifi = Screen('GetFlipInterval', window);
     
-    % Get the durations in frames
-    % variable pre-stimulus noise mask duration
-    ITIsFrames         = randi(round(PresParams.ITI_Range/ifi),nTrials,1);
+    % Get the fixation time for every trial (random ITI)
+    % in seconds.
+    ITIsSecs        = randi(round(PresParams.ITI_Range/ifi),nTrials,1)*ifi;
     
-    % fixed stimulus duration
-    stimDurFrames      = round(PresParams.stimDurationInSecs/ifi);
-    % post-stim max response period duration
-    MaxRespFrames       = round(PresParams.MaxResponseTime /ifi);
-    
-    % Set the line width for our fixation cross
-    lineWidthPix = 4;
+    % post-stim max confidence response period duration
+    MaxConfDescFrames  = round(PresParams.MaxConfDecInSecs /ifi);
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
-    for ii = 1:10%nTrials
+    for ii = 1:nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
-        tstring = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
-        DrawFormattedText(window,tstring,'center','center',255,50);
+        loadStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
+        DrawFormattedText(window,loadStr,'center','center',255,50);
         Screen('Flip',window);
     end
- 
+    
+    % Get coordindates for confidence bar
+    [ConfidenceBarCoords] = ConfBarParams(xCenter, yCenter,screenXpixels,screenYpixels);
+    RightExtent = max(ConfidenceBarCoords(1,:));
+    LeftExtent  = min(ConfidenceBarCoords(1,:));
+    TopExtent   = max(ConfidenceBarCoords(2,:));
+    BottomExtent= min(ConfidenceBarCoords(2,:));
+    CenterYpos  = ConfidenceBarCoords(2,1);
     
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
-    tstring = ['Instructions\n\n' ...
+    InstString = ['Instructions\n\n' ...
         'You will be presented with images that you might recognized from the previous experiment. '...
-        'Your task is to indetify which images were presented before, '...
-        'and which ones are new and indicate your confidence by clicking the confidence bar.'...
-        'The confidence bar goes from ' confBarLimits{1} ' to ' confBarLimits{2} '.',...
-        ' You will have ' num2str(PresParams.MaxResponseTime ) ' seconds to respond, and please do so '...
-        'as quickly and as accurately as possible. \n'...
+        'Your task is to indetify which images were presented before, and which ones are new '...
+        'by pressing a button. For ' RespConds{1} ' images you will be pressing the '...
+        PresParams.RespButtons(1) ' key, for ' RespConds{3} ' images you will press the '...
+        PresParams.RespButtons(3) ' key. If you are unsure, you can press the '...
+        PresParams.RespButtons(2) ' key. You will have ' num2str(PresParams.MaxResponseTime) ...
+        ' seconds to respond, and please do so as quickly and as accurately as possible. '...
+        'If you identify the image as old or new, you will also be indicating your '...
+        'confidence in that decision by clicking on scale with the mouse. \n\n'...
+        'If no questions, \n'...'
         'Press ''' resumeKey ''' to begin the experiment.'];
     
+    NoRespText = 'No response recorded, please answer quicker!';
     
-    DrawFormattedText(window,tstring, 'wrapat', 'center', 255, 40, [],[],[],[],[xCenter*0.2,0,screenXpixels*0.6,screenYpixels]);
+    WrongKeyText = ['Please use only the following keys: \n \n' ...
+        PresParams.RespButtons(1) ' for ' RespConds{1} '\n' ...
+        PresParams.RespButtons(2) ' for ' RespConds{2} '\n' ...
+        PresParams.RespButtons(3) ' for ' RespConds{3} '\n\n'...
+        'Press ''' resumeKey ''' to continue'];
+    
+    DrawFormattedText(window,InstString, 'wrapat', 'center', 255, ...
+        75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
     Screen('Flip',window);
     
     % resume if Resume Key is pressed
-    
     WaitTillResumeKey(resumeKey,activeKeyboardID)
     %%
     %---------------------------------------------------------------------%
     % Trials
     %---------------------------------------------------------------------%
-    % Set timing for each flip in a trial
-    stimFlipDurSecs = (stimDurFrames - 0.5) * ifi;
     
     % Maximum priority level
     topPriorityLevel = MaxPriority(window);
     Priority(topPriorityLevel);
-        
+    
     % iterate through trials
-    for tt = 1:nTrials
+    for tt = 1:20%nTrials
         
         % empty flip var
         flip     = [];
         
-        % Pre-stimulus noise mask (variable ITI); store the first one        
-        Screen('DrawLines', window, fixCrossCoords,lineWidthPix, PURPLE, [0 0], 2);
+        % Pre-stimulus fixation (variable ITI).
+        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PURPLE, [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window);
         TimingInfo.preStimFixFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
         
-        for ii=1:(ITIsFrames(tt)-1)
-            Screen('DrawTexture', window, noiseTextures{randi(Nmasks)}, [], [], 0);
-            Screen('DrawLines', window, fixCrossCoords,lineWidthPix, PURPLE, [0 0], 2);
-            vbl = Screen('Flip', window, vbl + 0.5*ifi);            
-        end
+        % Re-draw for last frame of ITI, taking into account the previous
+        % presentation
+        itiDur = vbl - 1.5*ifi + ITIsSecs(tt);
+        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PURPLE, [0 0], 2);
+        vbl = Screen('Flip', window, itiDur);
         
         % Checks if the Pause Key has been pressed.
         CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
         KbQueueFlush(activeKeyboardID);
         
-        % Draw Stimulus for stimFlipDurSecs
+        % Draw Stimulus
         Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);
-        Screen('DrawLines', window, fixCrossCoords,lineWidthPix, cueColors(tt,:), [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window, vbl + 0.5*ifi);
         TimingInfo.stimPresFlip{tt}=flip;
         trialTime = GetSecs;
         vbl = flip.VBLTimestamp;
         
-        % Draw Post-Stim Noise
-        Screen('DrawTexture', window, noiseTextures{randi(Nmasks)}, [], [], 0);
-        [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
-            = Screen('Flip', window, vbl + stimFlipDurSecs);
-        
-        TimingInfo.postStimMaskFlip{tt}=flip;
-        vbl = flip.VBLTimestamp;
-        
-        % Re-draw noise mask until response or until max resp time
-        for ii = 1:(MaxRespFrames-1)
-            [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
+        % Wait for Response
+        [secs,key]=KbQueueWait2(activeKeyboardID,PresParams.stimDurationInSecs-2*ifi);
+        if secs<inf && numel(key)==1
+            TimingInfo.trialKeyPress{tt} = key;
+            TimingInfo.trialRT(tt) = secs-trialTime;
             
-            if pressed
-                TimingInfo.trialKeyPress{tt} = KbName(firstPress);
-                TimingInfo.trialRT(tt) = firstPress(find(firstPress,1))-trialTime;
-                break
+            switch key
+                case PresParams.RespButtons(1)
+                    TimingInfo.CondResp{tt} = RespConds{1};
+                case PresParams.RespButtons(2)
+                    TimingInfo.CondResp{tt} = RespConds{2};
+                case PresParams.RespButtons(3)
+                    TimingInfo.CondResp{tt} = RespConds{3};
+                otherwise
+                    TimingInfo.CondResp{tt} = 'wrongkey';
+                    DrawFormattedText(window, WrongKeyText, 'center' , 'center');
+                    Screen('Flip', window, vbl + 0.5*ifi);
+                    WaitTillResumeKey(resumeKey,activeKeyboardID)
             end
-            Screen('DrawTexture', window, noiseTextures{randi(Nmasks)}, [], [], 0);
-            vbl  = Screen('Flip', window,vbl + 0.5*ifi);
+        else
+            DrawFormattedText(window,NoRespText, 'center' , 'center');
+            Screen('Flip', window, vbl + 0.5*ifi);
+            WaitSecs(1);
         end
         
-        % if no response.
-        if ~pressed
-            TimingInfo.trialRT(tt) = nan;
+        % If response is old or new, probe confidence.
+        confResp = 0; % confidence response flag.
+        if strcmp(TimingInfo.CondResp{tt},'old') || strcmp(TimingInfo.CondResp{tt},'new')
+            SetMouse(xCenter,CenterYpos,window);
+            for ii = 1:(MaxConfDescFrames)
+                % Draw Confidence Bar
+                Screen('DrawLines', window, ConfidenceBarCoords,PresParams.lineWidthPix, BLUE, [0 0], 2);
+                DrawFormattedText(window, [' Confidence for ' TimingInfo.CondResp{tt}], 'center' , TopExtent-0.1*screenYpixels, WHITE);
+                DrawFormattedText(window, ' 0 ', LeftExtent-20, TopExtent-0.1*screenYpixels, WHITE);
+                DrawFormattedText(window, '100' , RightExtent-20, TopExtent-0.1*screenYpixels, WHITE);
+                
+                % Get the current position of the mouse
+                [mx, ~, buttons] = GetMouse(window);
+                
+                % draw dot indicating position of mouse
+                if mx>= RightExtent
+                    Screen('DrawDots', window, [RightExtent CenterYpos], 15, WHITE, [], 2);
+                    mx = RightExtent;
+                elseif mx<= LeftExtent
+                    Screen('DrawDots', window, [LeftExtent CenterYpos], 15, WHITE, [], 2);
+                    mx = LeftExtent;
+                else
+                    Screen('DrawDots', window, [mx CenterYpos], 15, WHITE, [], 2);
+                end
+                
+                % If there was a click, record. else continue to draw
+                if sum(buttons)
+                    confResp = 1;
+                    Pct = (mx-LeftExtent)/(RightExtent-LeftExtent);
+                    TimingInfo.Confidence(tt) = Pct;
+                    
+                    buttonPress = sprintf('Response: %.2g',Pct);
+                    DrawFormattedText(window,buttonPress,'center', BottomExtent+100, WHITE);
+                    HideCursor();
+                    Screen('Flip', window, vbl + 0.5* ifi);
+                    SetMouse(xCenter,CenterYpos,window);
+                    WaitSecs(0.5);
+                    break
+                else
+                    vbl  = Screen('Flip', window, vbl +  0.5*ifi);
+                end
+            end
+            if ~confResp
+                DrawFormattedText(window,NoRespText, 'center' , 'center');
+                Screen('Flip', window, vbl + 0.5*ifi);
+                WaitSecs(1);
+            end
         end
-        KbQueueFlush(activeKeyboardID);
+        
+        % save every PresParams.SaveEvNtrials
+        if mod(tt,PresParams.SaveEvNtrials)==0
+            tempName = sprintf('/tacs_er.s%i.test.%s.mat', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
+            save([thePath.subjectPath,tempName],'TimingInfo');
+        end
         
     end
-    
     %---------------------------------------------------------------------%
     % End of Experiment
     %---------------------------------------------------------------------%
-    KbQueueStop(activeKeyboardID);
+    % store additional outputs
+    ret_out = [];
+    ret_out.PresParams  = PresParams;
+    ret_out.expInfo     = tacs_er;
+    ret_out.TimingInfo  = TimingInfo;
     
-    tstring = ['End of Experiment.\n \n' ...
+    % save
+    fileName = 'tacs_er.test.mat';
+    cnt = 0;
+    while 1
+        savePath = strcat(thePath.subjectPath,'/',fileName);
+        if ~exist(savePath,'file')
+            save(savePath,'ret_out')
+            break
+        else
+            cnt = cnt+1;
+            warning(strcat(fileName,' already existed.'))
+            fileName = strcat('tacs_er.test','-',num2str(cnt),'.mat');
+            warning(strcat('saving as ', fileName))
+        end
+    end
+    
+    InstString = ['End of Experiment.\n \n' ...
         'Press ''' resumeKey ''' to exit.'];
     
-    DrawFormattedText(window,tstring, 'center', 'center', 255, 40);
+    DrawFormattedText(window,InstString, 'center', 'center', 255, 40);
     Screen('Flip',window);
-    getKey(resumeKey,activeKeyboardID);
+    WaitTillResumeKey(resumeKey,activeKeyboardID)
+    KbQueueStop(activeKeyboardID);
     
     msg='allGood';
 catch msg
     sca
+    ShowCursor
     keyboard
 end
-
-% store additional outputs
-out.TimingInfo = TimingInfo;
-
 
 % Clear the screen
 Priority(0);
 sca;
 Screen('CloseAll');
-
-save;
 ShowCursor;
 
 end
@@ -229,7 +336,10 @@ end
 % auxiliary functions and definitions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%-------------------------------------------------------------------------%
+% fixCrossCoords
 % Set Fixation Cross Coordinates
+%-------------------------------------------------------------------------%
 function fixCrossCoords = fixCross(xCenter, yCenter,screenXpixels,screenYpixels)
 
 fixCrossXlength = max(0.02*screenXpixels,0.02*screenYpixels); % max of 2% screen dims
@@ -247,7 +357,10 @@ fixCrossCoords       = [fixCrossXCoords fixCrossYCoords];
 
 end
 
+%-------------------------------------------------------------------------%
+% WaitTillResumeKey
 % Wait until Resume Key is pressed on the keyboard
+%-------------------------------------------------------------------------%
 function WaitTillResumeKey(resumeKey,activeKeyboardID)
 
 KbQueueFlush(activeKeyboardID);
@@ -263,8 +376,11 @@ end
 KbQueueFlush(activeKeyboardID);
 end
 
+%-------------------------------------------------------------------------%
+% CheckForPauseKey
 % Check if the resume key has been pressed, and pause exection until resume
 % key is pressed.
+%-------------------------------------------------------------------------%
 function CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
 
 [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
@@ -273,4 +389,33 @@ if pressed
         WaitTillResumeKey(resumeKey,activeKeyboardID)
     end
 end
+end
+
+%-------------------------------------------------------------------------%
+% ConfBarParams
+% Confidence Bar Coordinates
+%-------------------------------------------------------------------------%
+function [ConfidenceBarCoords] = ConfBarParams(xCenter, yCenter,screenXpixels,screenYpixels)
+
+% Here we set the size of our confidence bar
+BarLength = 0.5*screenXpixels; % 50% of the width screen
+HeightOfBarWhisks = 0.05*screenYpixels; % 5% of the height of screen
+
+LeftExtent  = xCenter-BarLength/2;
+MidLeftExtent = xCenter-BarLength/4;
+RightExtent = xCenter+BarLength/2 ;
+MidRightExtent = xCenter+BarLength/4;
+BottomExtent = yCenter+HeightOfBarWhisks/2 ;
+TopExtent   =  yCenter- HeightOfBarWhisks/2 ;
+
+HorizontalBarCoords   = [LeftExtent RightExtent; yCenter yCenter];
+
+LeftWhisk             = [LeftExtent LeftExtent ; BottomExtent TopExtent];
+RightWhisk            = [RightExtent RightExtent ; BottomExtent TopExtent];
+MidLeftWhisk          = [MidLeftExtent MidLeftExtent ; BottomExtent TopExtent];
+MidRightWhisk         = [MidRightExtent MidRightExtent ; BottomExtent TopExtent];
+CenterWhisk           = [xCenter xCenter ; BottomExtent TopExtent];
+
+ConfidenceBarCoords   = [HorizontalBarCoords LeftWhisk RightWhisk ...
+    MidLeftWhisk MidRightWhisk CenterWhisk];
 end
