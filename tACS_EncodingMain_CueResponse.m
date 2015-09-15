@@ -14,7 +14,7 @@ function [enc_out,msg]=tACS_EncodingMain_CueResponse(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 1th, 2015
-% LastUpdate:   Aug 24th, 2015
+% LastUpdate:   Sept 15th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -34,7 +34,8 @@ end
 % Define colors
 RED     = [0.77 0.05 0.2];
 BLUE    = [0.2 0.1385 1];
-PURPLE  = [.5 0.1 0.5];
+%PURPLE  = [.5 0.1 0.5];
+PURPLE  = [1 1 1];
 
 %PsychDebugWindowConfiguration;
 
@@ -49,7 +50,14 @@ PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDura
 PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
 PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
 PresParams.MaxResponseTime      = 1.5;       % maximum to make perceptual decision
-PresParams.lineWidthPix         = 4;       % Set the line width for our fixation cross
+%PresParams.lineWidthPix         = 4;       % Set the line width for our fixation cross
+PresParams.PreStimFixColor      = [1 1 1];
+PresParams.PreStimFixColorStr   = 'WHITE;
+PresParams.CueColor1            = [0.77 0.05 0.2];
+PresParams.CueColor1Str         = 'RED';
+PresParams.CueColor2            = [0.2 0.1385 1];
+PresParams.CueColor2Str         = 'RED';
+PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
 PresParams.Nmasks               = 50;      % number of noise masks
 PresParams.nsMaskSize           = [255 255];  % noise mask size (same as stimuli)
 PresParams.SaveEvNtrials        = 50;
@@ -66,8 +74,8 @@ end
 laptopResponseKeys = laptopResponseKeys(responseMap);
 keypadResponseKeys = keypadResponseKeys(responseMap);
 
-PresParams.CueColorsID{1} = RED;
-PresParams.CueColorsID{2} = BLUE;
+PresParams.CueColorsID{1} = PresParams.CueColor1;
+PresParams.CueColorsID{2} = PresParams.CueColor2;
 
 enc_out.PresParams  = PresParams;
 enc_out.expInfo     = tacs_er;
@@ -160,10 +168,10 @@ try
     % Participant Instructions
     %---------------------------------------------------------------------%
     tstring = ['Instructions\n\n' ...
-        'You will be presented with a PURPLE Fixation Cross. '...
-        'Your task is to respond with ' PresParams.RespToCue1 ' for the RED Fixation and '...
-        'with ' PresParams.RespToCue2 ' for BLUE Fixations. ' ...
-        'You will have ' num2str(PresParams.MaxResponseTime ) ' second to respond '...
+        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
+        'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
+        'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...
+        'You will have ' num2str(PresParams.MaxResponseTime) ' second to respond '...
         'as quickly and as accurately as possible. \n'...
         'Press ''' resumeKey ''' to begin the experiment.'];
     
