@@ -31,13 +31,8 @@ else
     tacs_er =tACS_ER_makelist_RepeatStims(thePath);
 end
 
-% Define colors
-RED     = [0.77 0.05 0.2];
-BLUE    = [0.2 0.1385 1];
-%PURPLE  = [.5 0.1 0.5];
-PURPLE  = [1 1 1];
-
-%PsychDebugWindowConfiguration;
+% For debugging:
+% PsychDebugWindowConfiguration
 
 % output structure
 enc_out = [];
@@ -50,9 +45,8 @@ PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDura
 PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
 PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
 PresParams.MaxResponseTime      = 1.5;       % maximum to make perceptual decision
-%PresParams.lineWidthPix         = 4;       % Set the line width for our fixation cross
 PresParams.PreStimFixColor      = [1 1 1];
-PresParams.PreStimFixColorStr   = 'WHITE;
+PresParams.PreStimFixColorStr   = 'WHITE';
 PresParams.CueColor1            = [0.77 0.05 0.2];
 PresParams.CueColor1Str         = 'RED';
 PresParams.CueColor2            = [0.2 0.1385 1];
@@ -171,8 +165,8 @@ try
         'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
         'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
         'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...
-        'You will have ' num2str(PresParams.MaxResponseTime) ' second to respond '...
-        'as quickly and as accurately as possible. \n'...
+        'You will have ' num2str(PresParams.MaxResponseTime) ' seconds to respond '...
+        'as quickly and as accurately as possible. \n\n'...
         'Press ''' resumeKey ''' to begin the experiment.'];
     
     
@@ -201,7 +195,7 @@ try
         
         % Pre-stimulus noise mask (variable ITI); store the first one
         Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
-        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PURPLE, [0 0], 2);
+        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window);
         TimingInfo.preStimMaskFlip{tt}=flip;
@@ -209,7 +203,7 @@ try
         
         for ii=1:(ITIsFrames(tt)-1)
             Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
-            Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PURPLE, [0 0], 2);
+            Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
             vbl = Screen('Flip', window, vbl + 0.5*ifi);
         end
         
@@ -258,6 +252,9 @@ try
             tempName = sprintf('/tacs_er.s%i.encoding.%s.mat;', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
             save([thePath.subjectPath,tempName],'TimingInfo');
         end
+        
+        % Discard used image texture
+        Screen('Close', imgTextures{tt})
     end
     
     %---------------------------------------------------------------------%
@@ -296,7 +293,6 @@ catch msg
     sca
     keyboard
 end
-
 
 % Clear the screen
 Priority(0);
