@@ -1,20 +1,17 @@
 
-function [enc_out,msg]=tACS_EncodingMain_CueResponse(thePath)
+function [enc_out,msg]=tACS_EncodingMain_Passive(thePath)
 % tACS stimulus encoding presentation script.
 %
 % this scripts presents stimuli to be encoded for a time depending on
-% frequency of stimulation. the subject's task is to identify the color
-% of a fixation marker super-imposed on the stimuli of interest. stimuli
-% , stimulus order and stimulus conditions are pre-determined by the
-% tacs_er make list script. thePath indicates the path of the tacs_Eer
-% structure.
-%
-% subjects performance on the cue color identification is stored peridiocally.
+% frequency of stimulation. the subject's task is to observe different
+% stimuli without making responses. stimulus order and stimulus conditions 
+% are pre-determined by the tacs_er make list script. 
+% thePath indicates the path of the tacs_er structure.
 %
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
-% Created:      Aug 1th, 2015
-% LastUpdate:   Sept 15th, 2015
+% Created:      Sept 16th, 2015
+% LastUpdate:   Sept 16th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -43,33 +40,14 @@ PresParams.stimFrequency        = 6;
 PresParams.stimDurationInCycles = 0.5;
 PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDurationInCycles;
 PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
-PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
-PresParams.MaxResponseTime      = 1.5;       % maximum to make perceptual decision
+PresParams.ITI_Range            = [1 1.5]; % variable ITI in secs
+PresParams.PostStimTime         = 1;       
 PresParams.PreStimFixColor      = [1 1 1];
 PresParams.PreStimFixColorStr   = 'WHITE';
-PresParams.CueColor1            = [0.77 0.05 0.2];
-PresParams.CueColor1Str         = 'RED';
-PresParams.CueColor2            = [0.2 0.1385 1];
-PresParams.CueColor2Str         = 'BLUE';
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
 PresParams.Nmasks               = 50;      % number of noise masks
 PresParams.nsMaskSize           = tacs_er.stimSize;  % noise mask size (same as stimuli)
 PresParams.SaveEvNtrials        = 50;
-
-% determine cue response mapping depending on subject number and active
-% Keyboard.
-laptopResponseKeys = ['k','l'];
-keypadResponseKeys = ['1','2'];
-if mod(tacs_er.subjNum,2)
-    responseMap = [1,2];
-else
-    responseMap = [2,1];
-end
-laptopResponseKeys = laptopResponseKeys(responseMap);
-keypadResponseKeys = keypadResponseKeys(responseMap);
-
-PresParams.CueColorsID{1} = PresParams.CueColor1;
-PresParams.CueColorsID{2} = PresParams.CueColor2;
 
 enc_out.PresParams  = PresParams;
 enc_out.expInfo     = tacs_er;
@@ -84,8 +62,6 @@ TimingInfo = [];
 TimingInfo.preStimMaskFlip = cell(nTrials,1);
 TimingInfo.stimPresFlip = cell(nTrials,1);
 TimingInfo.postStimMaskFlip = cell(nTrials,1);
-TimingInfo.trialRT          = zeros(nTrials,1);
-TimingInfo.trialKeyPress    = cell(nTrials,1);
 
 try
     
@@ -93,19 +69,11 @@ try
     % Screen and additional presentation parameters
     %---------------------------------------------------------------------%
     % Get keyboard number
-    [activeKeyboardID, laptopKeyboardID, pauseKey, resumeKey] = getKeyboardOr10key;
+    [activeKeyboardID, ~, pauseKey, resumeKey] = getKeyboardOr10key;
     % initialize Keyboard Queue
     KbQueueCreate(activeKeyboardID);
     % Start keyboard queue
-    KbQueueStart(activeKeyboardID);
-    
-    if laptopKeyboardID==activeKeyboardID
-        PresParams.RespToCue1 = laptopResponseKeys(1);
-        PresParams.RespToCue2 = laptopResponseKeys(2);
-    else
-        PresParams.RespToCue1 = keypadResponseKeys(1);
-        PresParams.RespToCue2 = keypadResponseKeys(2);
-    end
+    KbQueueStart(activeKeyboardID);    
     
     % initialie window
     [window, windowRect] = initializeScreen;
@@ -127,8 +95,8 @@ try
     
     % fixed stimulus duration
     stimDurFrames      = round(PresParams.stimDurationInSecs/ifi);
-    % post-stim max response period duration
-    MaxRespFrames       = round(PresParams.MaxResponseTime /ifi);
+    % post-stim duration in frames
+    PostStimFrames       = round(PresParams.PostStimTime /ifi);
     
     % creat noise masks
     noiseTextures = cell(PresParams.Nmasks ,1);
@@ -148,28 +116,14 @@ try
         Screen('Flip',window);
     end
     
-    % Set encoding cue color
-    cueColors = zeros(nTrials,3);
-    for ii = 1:nTrials
-        if tacs_er.EncStimCue(ii)==1
-            cueColors(ii,:) = PresParams.CueColorsID{1};
-        else
-            cueColors(ii,:) = PresParams.CueColorsID{2};
-        end
-    end
-    
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
     tstring = ['Instructions\n\n' ...
-        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
-        'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
-        'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...
-        'You will have ' num2str(PresParams.MaxResponseTime) ' seconds to respond '...
-        'as quickly and as accurately as possible. \n\n'...
+        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross, '...
+        'followed by an image. Your task is to simply observe each image. \n\n'...
         'Press ''' resumeKey ''' to begin the experiment.'];
-    
-    
+        
     DrawFormattedText(window,tstring, 'wrapat', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
     Screen('Flip',window);
     
@@ -212,12 +166,10 @@ try
         KbQueueFlush(activeKeyboardID);
         
         % Draw Stimulus for stimFlipDurSecs
-        Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);
-        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, cueColors(tt,:), [0 0], 2);
+        Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);        
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window, vbl + 0.5*ifi);
-        TimingInfo.stimPresFlip{tt}=flip;
-        trialTime = GetSecs;
+        TimingInfo.stimPresFlip{tt}=flip;        
         vbl = flip.VBLTimestamp;
         
         % Draw Post-Stim Noise
@@ -228,23 +180,12 @@ try
         TimingInfo.postStimMaskFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
         
-        % Re-draw noise mask until response or until max resp time
-        for ii = 1:(MaxRespFrames-1)
-            [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-            
-            if pressed
-                TimingInfo.trialKeyPress{tt} = KbName(firstPress);
-                TimingInfo.trialRT(tt) = firstPress(find(firstPress,1))-trialTime;
-                break
-            end
+        % Re-draw noise un post stim frames.
+        for ii = 1:(PostStimFrames-1)            
             Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
             vbl  = Screen('Flip', window,vbl + 0.5*ifi);
         end
-        
-        % if no response.
-        if ~pressed
-            TimingInfo.trialRT(tt) = nan;
-        end
+               
         KbQueueFlush(activeKeyboardID);
         
         % save every PresParams.SaveEvNtrials
@@ -265,7 +206,7 @@ try
     enc_out.TimingInfo = TimingInfo;
     
     % save
-    fileName = 'tacs_er.encoding.mat';
+    fileName = 'tacs_er.encoding_passive.mat';
     cnt = 0;
     while 1
         savePath = strcat(thePath.subjectPath,'/',fileName);
@@ -275,7 +216,7 @@ try
         else
             cnt = cnt+1;
             warning(strcat(fileName,' already existed.'))
-            fileName = strcat('tacs_er.encoding','-',num2str(cnt),'.mat');
+            fileName = strcat('tacs_er.encoding_passive','-',num2str(cnt),'.mat');
             warning(strcat('saving as ', filenName))
         end
     end        

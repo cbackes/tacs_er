@@ -27,7 +27,7 @@ else
     error('no task created, must run encoding task first!')
 end
 
-PsychDebugWindowConfiguration;
+%PsychDebugWindowConfiguration;
 
 % Presentation Parameters
 PresParams  = [];
@@ -117,7 +117,7 @@ try
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
-    for ii = 1:10%nTrials
+    for ii = 1:nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
         loadStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
         DrawFormattedText(window,loadStr,'center','center',255,50);

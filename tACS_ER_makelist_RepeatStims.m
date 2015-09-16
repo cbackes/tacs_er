@@ -42,7 +42,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Sept 15th, 2015
+% LastUpdate:   Sept 16th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -51,19 +51,24 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 nUniqueFaceStimuli = 120;
 nUniqueSceneStimuli = 120;
 nEncStim    = nUniqueSceneStimuli+ nUniqueFaceStimuli;
-nEncBlocks = 2;
-nEncTrials = nEncBlocks*nEncStim;
 nEncPhases = 6;
 nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
 EncPhases  = 0:(360/nEncPhases):359;
 nCueTypes  = 2;
 
-if strcmp(thePath.exptType,'behav') % famous
-    stimSize   = [225 225];
-elseif strcmp(thePath.exptType,'behav_v3') % non-famous
-    stimSize   = [300 300];
+switch thePath.exptType
+    case 'behav'
+        stimSize   = [225 225]; % famous 
+        nEncBlocks = 2;
+    case 'behav_v3'
+        stimSize   = [300 300]; %non-famous
+        nEncBlocks = 2;
+    case 'behav_v4' % non-famous, passive viewing
+        stimSize   = [300 300];
+        nEncBlocks = 3;
 end
 
+nEncTrials = nEncBlocks*nEncStim;
 nRetTrials = 360;   % encoding trials + retrieval trials
 nFoilTrials =nRetTrials-nEncStim;
 nRetConds  = 4;     % old and new conditons per stim type (Face/scene)
@@ -79,7 +84,7 @@ end
 %% load data names
 if strcmp(thePath.exptType,'behav') % famous
     cd(fullfile(thePath.stim,'landmarks'));
-elseif strcmp(thePath.exptType,'behav_v3') % non-famous
+else 
     cd(fullfile(thePath.stim,'notfamous_scenes/cropped'));
 end
 temp = dir('*.jpg');
