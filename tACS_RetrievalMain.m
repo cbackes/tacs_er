@@ -27,12 +27,7 @@ else
     error('no task created, must run encoding task first!')
 end
 
-% Define colors
-WHITE   = [1 1 1];
-BLUE    = [0.2 0.1385 1];
-PURPLE  = [.5 0.1 0.5];
-
-%PsychDebugWindowConfiguration;
+PsychDebugWindowConfiguration;
 
 % Presentation Parameters
 PresParams  = [];
@@ -42,7 +37,11 @@ PresParams.MaxResponseTime      = 3;       % maximum to make recognition decisio
 PresParams.MaxConfDecInSecs     = 5; % max time to make confidene decision
 PresParams.SaveEvNtrials        = 20; % save progress every X# of trials.
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
-PresParams.
+PresParams.dotColor             = [1 1 1];
+PresParams.fixCrossColor        = [1 1 1];
+PresParams.textColor            = [1 1 1];
+PresParams.ConfidenceScale      = 0; % confidence scale flag
+PresParams.ConfBarColor         = [0.2 0.1385 1];
 
 % determine numbers for recognition decision
 % depending on subject number and active Keyboard.
@@ -75,6 +74,7 @@ TimingInfo.trialRT          = nan(nTrials,1);
 TimingInfo.trialKeyPress    = cell(nTrials,1);
 TimingInfo.CondResp         = cell(nTrials,1);
 TimingInfo.Confidence       = nan(nTrials,1);
+TimingInfo.ConfResp         = cell(nTrials,1);
 
 try
     
@@ -117,7 +117,7 @@ try
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
-    for ii = 1:nTrials
+    for ii = 1:10%nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
         loadStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
         DrawFormattedText(window,loadStr,'center','center',255,50);
@@ -135,18 +135,34 @@ try
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
-    InstString = ['Instructions\n\n' ...
-        'You will be presented with images that you might recognized from the previous experiment. '...
-        'Your task is to indentify which images were presented before and which ones are new '...
-        'by pressing a button. For ' RespConds{1} ' images you will be pressing the '...
-        PresParams.RespButtons(1) ' key, for ' RespConds{3} ' images you will press the '...
-        PresParams.RespButtons(3) ' key. If you are unsure, you can press the '...
-        PresParams.RespButtons(2) ' key. You will have ' num2str(PresParams.MaxResponseTime) ...
-        ' seconds to respond, and please do so as quickly and as accurately as possible. '...
-        'If you identify the image as old or new, you will also be indicating your '...
-        'confidence in that decision by clicking on a scale with the mouse. \n\n'...
-        'If no questions, \n'...'
-        'Press ''' resumeKey ''' to begin the experiment.'];
+    if PresParams.ConfidenceScale
+        InstString = ['Instructions\n\n' ...
+            'You will be presented with images that you might recognized from the previous experiment. '...
+            'Your task is to indentify which images were presented before and which ones are new '...
+            'by pressing a button. For ' RespConds{1} ' images you will be pressing the '...
+            PresParams.RespButtons(1) ' key, for ' RespConds{3} ' images you will press the '...
+            PresParams.RespButtons(3) ' key. If you are unsure, you can press the '...
+            PresParams.RespButtons(2) ' key. You will have ' num2str(PresParams.MaxResponseTime) ...
+            ' seconds to respond, and please do so as quickly and as accurately as possible. '...
+            'If you identify the image as old or new, you will also be indicating your '...
+            'confidence in that decision by clicking on a scale with the mouse. \n\n'...
+            'If no questions, \n'...'
+            'Press ''' resumeKey ''' to begin the experiment.'];
+    else
+        InstString = ['Instructions\n\n' ...
+            'You will be presented with images that you might recognized from the previous experiment. '...
+            'Your task is to indentify which images were presented before and which ones are new '...
+            'by pressing a button. For ' RespConds{1} ' images you will be pressing the '...
+            PresParams.RespButtons(1) ' key, for ' RespConds{3} ' images you will press the '...
+            PresParams.RespButtons(3) ' key. If you are unsure, you can press the '...
+            PresParams.RespButtons(2) ' key. You will have ' num2str(PresParams.MaxResponseTime) ...
+            ' seconds to respond, and please do so as quickly and as accurately as possible. '...
+            'If you identify the image as old or new, you will also be indicating your '...
+            'confidence by pressing ' PresParams.RespButtons(1) ', ' PresParams.RespButtons(2) ' and ' ...
+            PresParams.RespButtons(3) ' for low, medium and high confidence, respectively. \n\n'...
+            'If there are no questions, \n'...'
+            'Press ''' resumeKey ''' to begin the experiment.'];
+    end
     
     NoRespText = 'No response recorded, please answer quicker!';
     
@@ -154,6 +170,12 @@ try
         PresParams.RespButtons(1) ' for ' RespConds{1} '\n' ...
         PresParams.RespButtons(2) ' for ' RespConds{2} '\n' ...
         PresParams.RespButtons(3) ' for ' RespConds{3} '\n\n'...
+        'Press ''' resumeKey ''' to continue'];
+    
+    WrongConfKeyText = ['Please use only the following keys: \n \n' ...
+        PresParams.RespButtons(1) ' for low confidence \n' ...
+        PresParams.RespButtons(2) ' for mid confidence \n' ...
+        PresParams.RespButtons(3) ' for high confidence \n\n'...
         'Press ''' resumeKey ''' to continue'];
     
     DrawFormattedText(window,InstString, 'wrapat', 'center', 255, ...
@@ -178,7 +200,7 @@ try
         flip     = [];
         
         % Pre-stimulus fixation (variable ITI).
-        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PURPLE, [0 0], 2);
+        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.fixCrossColor, [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window);
         TimingInfo.preStimFixFlip{tt}=flip;
@@ -187,7 +209,7 @@ try
         % Re-draw for last frame of ITI, taking into account the previous
         % presentation
         itiDur = vbl - 1.5*ifi + ITIsSecs(tt);
-        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PURPLE, [0 0], 2);
+        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.fixCrossColor, [0 0], 2);
         vbl = Screen('Flip', window, itiDur);
         
         % Checks if the Pause Key has been pressed.
@@ -227,60 +249,89 @@ try
             WaitSecs(1);
         end
         
-        % If response is old or new, probe confidence.
-        confResp = 0; % confidence response flag.
         if strcmp(TimingInfo.CondResp{tt},'old') || strcmp(TimingInfo.CondResp{tt},'new')
-            SetMouse(xCenter,CenterYpos,window);
-            for ii = 1:(MaxConfDescFrames)
-                % Draw Confidence Bar
-                Screen('DrawLines', window, ConfidenceBarCoords,PresParams.lineWidthPix, BLUE, [0 0], 2);
-                DrawFormattedText(window, [' Confidence for ' TimingInfo.CondResp{tt}], 'center' , TopExtent-0.1*screenYpixels, WHITE);
-                DrawFormattedText(window, ' 0 ', LeftExtent-20, TopExtent-0.1*screenYpixels, WHITE);
-                DrawFormattedText(window, '100' , RightExtent-20, TopExtent-0.1*screenYpixels, WHITE);
-                
-                % Get the current position of the mouse
-                [mx, ~, buttons] = GetMouse(window);
-                
-                % draw dot indicating position of mouse
-                if mx>= RightExtent
-                    Screen('DrawDots', window, [RightExtent CenterYpos], 15, WHITE, [], 2);
-                    mx = RightExtent;
-                elseif mx<= LeftExtent
-                    Screen('DrawDots', window, [LeftExtent CenterYpos], 15, WHITE, [], 2);
-                    mx = LeftExtent;
-                else
-                    Screen('DrawDots', window, [mx CenterYpos], 15, WHITE, [], 2);
-                end
-                
-                % If there was a click, record. else continue to draw
-                if sum(buttons)
-                    confResp = 1;
-                    Pct = (mx-LeftExtent)/(RightExtent-LeftExtent);
-                    TimingInfo.Confidence(tt) = Pct;
+            if PresParams.ConfidenceScale
+                % If response is old or new, probe confidence.
+                confResp = 0; % confidence response flag.
+                SetMouse(xCenter,CenterYpos,window);
+                for ii = 1:(MaxConfDescFrames)
+                    % Draw Confidence Bar
+                    Screen('DrawLines', window, ConfidenceBarCoords,PresParams.lineWidthPix, PresParams.ConfBarColor, [0 0], 2);
+                    DrawFormattedText(window, [' Confidence for ' TimingInfo.CondResp{tt}], 'center' , TopExtent-0.1*screenYpixels, PresParams.textColor);
+                    DrawFormattedText(window, ' 0 ', LeftExtent-20, TopExtent-0.1*screenYpixels, PresParams.textColor);
+                    DrawFormattedText(window, '100' , RightExtent-20, TopExtent-0.1*screenYpixels, PresParams.textColor);
                     
-                    buttonPress = sprintf('Response: %.2g',Pct);
-                    DrawFormattedText(window,buttonPress,'center', BottomExtent+100, WHITE);
-                    HideCursor();
-                    Screen('Flip', window, vbl + 0.5* ifi);
-                    SetMouse(xCenter,CenterYpos,window);
-                    WaitSecs(0.5);
-                    break
-                else
-                    vbl  = Screen('Flip', window, vbl +  0.5*ifi);
+                    % Get the current position of the mouse
+                    [mx, ~, buttons] = GetMouse(window);
+                    
+                    % draw dot indicating position of mouse
+                    if mx>= RightExtent
+                        Screen('DrawDots', window, [RightExtent CenterYpos], 15, PresParams.dotColor, [], 2);
+                        mx = RightExtent;
+                    elseif mx<= LeftExtent
+                        Screen('DrawDots', window, [LeftExtent CenterYpos], 15, PresParams.dotColor, [], 2);
+                        mx = LeftExtent;
+                    else
+                        Screen('DrawDots', window, [mx CenterYpos], 15, PresParams.dotColor, [], 2);
+                    end
+                    
+                    % If there was a click, record. else continue to draw
+                    if sum(buttons)
+                        confResp = 1;
+                        Pct = (mx-LeftExtent)/(RightExtent-LeftExtent);
+                        TimingInfo.Confidence(tt) = Pct;
+                        
+                        buttonPress = sprintf('Response: %.2g',Pct);
+                        DrawFormattedText(window,buttonPress,'center', BottomExtent+100, PresParams.textColor);
+                        HideCursor();
+                        Screen('Flip', window, vbl + 0.5* ifi);
+                        SetMouse(xCenter,CenterYpos,window);
+                        WaitSecs(0.5);
+                        break
+                    else
+                        vbl  = Screen('Flip', window, vbl +  0.5*ifi);
+                    end
                 end
-            end
-            if ~confResp
-                DrawFormattedText(window,NoRespText, 'center' , 'center');
-                Screen('Flip', window, vbl + 0.5*ifi);
-                WaitSecs(1);
+                if ~confResp
+                    DrawFormattedText(window,NoRespText, 'center' , 'center');
+                    Screen('Flip', window, vbl + 0.5*ifi);
+                    WaitSecs(1);
+                end
+            else
+                DrawFormattedText(window, [' Confidence for ' TimingInfo.CondResp{tt} '?'], 'center' , TopExtent-0.1*screenYpixels, PresParams.textColor);
+                vbl=Screen('Flip', window, vbl + 0.5* ifi);
+                % Wait for Response
+                [secs,key]=KbQueueWait2(activeKeyboardID,PresParams.MaxConfDecInSecs-2*ifi);
+                if secs<inf && numel(key)==1
+                    switch key
+                        case PresParams.RespButtons(1)
+                            TimingInfo.ConfResp{tt} = 'low';
+                        case PresParams.RespButtons(2)
+                            TimingInfo.ConfResp{tt} = 'mid';
+                        case PresParams.RespButtons(3)
+                            TimingInfo.ConfResp{tt} = 'high';
+                        otherwise
+                            TimingInfo.ConfResp{tt} = 'wrongkey';
+                            DrawFormattedText(window, WrongConfKeyText, 'center' , 'center');
+                            Screen('Flip', window, vbl + 0.5*ifi);
+                            WaitTillResumeKey(resumeKey,activeKeyboardID)
+                    end
+                else
+                    DrawFormattedText(window,NoRespText, 'center' , 'center');
+                    Screen('Flip', window, vbl + 0.5*ifi);
+k                    WaitSecs(1);
+                end
             end
         end
-        
         % save every PresParams.SaveEvNtrials
         if mod(tt,PresParams.SaveEvNtrials)==0
             tempName = sprintf('/tacs_er.s%i.test.%s.mat', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
             save([thePath.subjectPath,tempName],'TimingInfo');
         end
+        
+        
+        % Discard used image texture
+        Screen('Close', imgTextures{tt})
         
     end
     %---------------------------------------------------------------------%

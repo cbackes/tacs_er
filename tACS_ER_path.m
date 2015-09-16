@@ -14,10 +14,10 @@ function thePath = tACS_ER_path(subjNum,exptType)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez (from similar lab copies)
 % Created:      May 25, 2015
-% LastUpdate:   Aug 20, 2015
+% LastUpdate:   Sept 15, 2015
 %------------------------------------------------------------------------%
 
-exptOptions = {'behav','eeg','eeg_enc','tacs_enc'};
+exptOptions = {'behav','behav_v3','eeg','eeg_enc','tacs_enc'};
 
 if ~any(strcmp(exptOptions,exptType))
     error('Experiment type not available; please see help tACS_ER_path')

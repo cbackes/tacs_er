@@ -42,7 +42,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Aug 20th, 2015
+% LastUpdate:   Sept 15th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -57,7 +57,12 @@ nEncPhases = 6;
 nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
 EncPhases  = 0:(360/nEncPhases):359;
 nCueTypes  = 2;
-stimSize   = [225 225];
+
+if strcmp(thePath.exptType,'behav') % famous
+    stimSize   = [225 225];
+elseif strcmp(thePath.exptType,'behav_v3') % non-famous
+    stimSize   = [300 300];
+end
 
 nRetTrials = 360;   % encoding trials + retrieval trials
 nFoilTrials =nRetTrials-nEncStim;
@@ -72,7 +77,11 @@ if strfind(version,'R2014b')>0
 end
 
 %% load data names
-cd(fullfile(thePath.stim,'landmarks'));
+if strcmp(thePath.exptType,'behav') % famous
+    cd(fullfile(thePath.stim,'landmarks'));
+elseif strcmp(thePath.exptType,'behav_v3') % non-famous
+    cd(fullfile(thePath.stim,'notfamous_scenes/cropped'));
+end
 temp = dir('*.jpg');
 count = 1;
 ScenesMat = cell(numel(temp),1);
@@ -93,7 +102,11 @@ SceneNames = {SceneNames.name}';
 [SceneNames,index] = Shuffle(SceneNames);
 ScenesMat = ScenesMat(index);
 
-cd(fullfile(thePath.stim,'people'));
+if strcmp(thePath.exptType,'behav') % famous
+    cd(fullfile(thePath.stim,'people'));
+elseif strcmp(thePath.exptType,'behav_v3') % non-famous
+    cd(fullfile(thePath.stim,'notfamous_people/cropped'));
+end
 temp = dir('*.jpg');
 count = 1;
 FacesMat = cell(numel(temp),1);
@@ -291,7 +304,7 @@ tacs_er.nEncConds  = nEncConds;
 tacs_er.nEncPhases = nEncPhases;
 tacs_er.EncPhases  = EncPhases;
 tacs_er.nEncBlocks = nEncBlocks;
-
+tacs_er.stimSize    = stimSize;
 tacs_er.nRetTrials = nRetTrials;
 tacs_er.nFoilTrials = nFoilTrials;
 tacs_er.nRetConds  = nRetConds;

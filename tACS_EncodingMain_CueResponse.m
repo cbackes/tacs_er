@@ -53,7 +53,7 @@ PresParams.CueColor2            = [0.2 0.1385 1];
 PresParams.CueColor2Str         = 'RED';
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
 PresParams.Nmasks               = 50;      % number of noise masks
-PresParams.nsMaskSize           = [255 255];  % noise mask size (same as stimuli)
+PresParams.nsMaskSize           = tacs_er.stimSize;  % noise mask size (same as stimuli)
 PresParams.SaveEvNtrials        = 50;
 
 % determine cue response mapping depending on subject number and active
