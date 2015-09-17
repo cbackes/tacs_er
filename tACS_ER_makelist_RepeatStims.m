@@ -42,7 +42,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Sept 16th, 2015
+% LastUpdate:   Sept 17th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -54,18 +54,20 @@ nEncStim    = nUniqueSceneStimuli+ nUniqueFaceStimuli;
 nEncPhases = 6;
 nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
 EncPhases  = 0:(360/nEncPhases):359;
-nCueTypes  = 2;
 
 switch thePath.exptType
     case 'behav'
-        stimSize   = [225 225]; % famous 
+        stimSize   = [225 225]; % famous
         nEncBlocks = 2;
+        nCueTypes  = 2;
     case 'behav_v3'
         stimSize   = [300 300]; %non-famous
         nEncBlocks = 2;
+        nCueTypes  = 2;
     case 'behav_v4' % non-famous, passive viewing
         stimSize   = [300 300];
         nEncBlocks = 3;
+        nCueTypes  = 1;
 end
 
 nEncTrials = nEncBlocks*nEncStim;
@@ -84,7 +86,7 @@ end
 %% load data names
 if strcmp(thePath.exptType,'behav') % famous
     cd(fullfile(thePath.stim,'landmarks'));
-else 
+else
     cd(fullfile(thePath.stim,'notfamous_scenes/cropped'));
 end
 temp = dir('*.jpg');
@@ -109,7 +111,7 @@ ScenesMat = ScenesMat(index);
 
 if strcmp(thePath.exptType,'behav') % famous
     cd(fullfile(thePath.stim,'people'));
-elseif strcmp(thePath.exptType,'behav_v3') % non-famous
+else
     cd(fullfile(thePath.stim,'notfamous_people/cropped'));
 end
 temp = dir('*.jpg');
@@ -151,7 +153,7 @@ StimObj = containers.Map( [FaceNames; SceneNames], [FacesMat; ScenesMat]);
 EncStimTypeIDs = {'Face','Scene'};
 EncStimType = zeros(nEncTrials,1);
 EncBlockID  = zeros(nEncTrials,1);
-EncStimCue  = zeros(nEncTrials,1);
+EncStimCue  = ones(nEncTrials,1);
 EncStimNames = cell(nEncTrials,1);
 nEncTrialsBlock = nEncTrials/nEncBlocks;
 nFacesEncBlock  = nEncTrialsBlock/2;
@@ -176,21 +178,23 @@ for bb = 1:nEncBlocks
     EncStimNames(SceneTrials) = Shuffle(EncScenes);
     
     % associate a cue
-    if bb ==1
-        % associated cue alternates by block; first one is random
-        cues = Shuffle([ones(nFacesEncBlock/2,1); 2*ones(nFacesEncBlock/2,1)]);
-        EncStimCue(FaceTrials) = Shuffle(cues);
-        EncStimCue(SceneTrials) = Shuffle(cues);
-        blockCues = EncStimCue(TrialBlockID);
-    else
-        % index of new order of stimuli
-        [~,i]=ismember(EncStimNames(EncBlockID==bb),EncStimNames(EncBlockID==1));
-        
-        % alternate associated cue
-        if mod(bb,2)==0
-            EncStimCue(TrialBlockID)=mod(blockCues(i),2)+1;
+    if nCueTypes>1
+        if bb ==1
+            % associated cue alternates by block; first one is random
+            cues = Shuffle([ones(nFacesEncBlock/2,1); 2*ones(nFacesEncBlock/2,1)]);
+            EncStimCue(FaceTrials) = Shuffle(cues);
+            EncStimCue(SceneTrials) = Shuffle(cues);
+            blockCues = EncStimCue(TrialBlockID);
         else
-            EncStimCue(TrialBlockID)=blockCues(i);
+            % index of new order of stimuli
+            [~,i]=ismember(EncStimNames(EncBlockID==bb),EncStimNames(EncBlockID==1));
+            
+            % alternate associated cue
+            if mod(bb,2)==0
+                EncStimCue(TrialBlockID)=mod(blockCues(i),2)+1;
+            else
+                EncStimCue(TrialBlockID)=blockCues(i);
+            end
         end
     end
 end
