@@ -194,7 +194,7 @@ try
     Priority(topPriorityLevel);
     
     % iterate through trials
-    for tt = 1:20%nTrials
+    for tt = 1:nTrials
         
         % empty flip var
         flip     = [];
@@ -319,7 +319,7 @@ try
                 else
                     DrawFormattedText(window,NoRespText, 'center' , 'center');
                     Screen('Flip', window, vbl + 0.5*ifi);
-k                    WaitSecs(1);
+                    WaitSecs(1);
                 end
             end
         end
