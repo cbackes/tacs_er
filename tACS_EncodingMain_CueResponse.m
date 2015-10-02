@@ -14,7 +14,7 @@ function [enc_out,msg]=tACS_EncodingMain_CueResponse(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 1th, 2015
-% LastUpdate:   Sept 15th, 2015
+% LastUpdate:   Oct 2th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -34,16 +34,19 @@ end
 % For debugging:
 % PsychDebugWindowConfiguration
 
-% output structure
-enc_out = [];
-
 % Presentation Parameters
 PresParams = [];
-PresParams.stimFrequency        = 6;
+switch tacs_er.exptType
+    case 'behav_v6'
+        PresParams.stimFrequency        = 5;
+    otherwise
+        PresParams.stimFrequency        = 6;
+end
+    
 PresParams.stimDurationInCycles = 0.5;
 PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDurationInCycles;
 PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
-PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
+PresParams.ITI_Range            = [1 1.5]; % variable ITI in secs
 PresParams.MaxResponseTime      = 1.5;       % maximum to make perceptual decision
 PresParams.PreStimFixColor      = [1 1 1];
 PresParams.PreStimFixColorStr   = 'WHITE';
@@ -55,6 +58,7 @@ PresParams.lineWidthPix         = 5;       % Set the line width for our fixation
 PresParams.Nmasks               = 50;      % number of noise masks
 PresParams.nsMaskSize           = tacs_er.stimSize;  % noise mask size (same as stimuli)
 PresParams.SaveEvNtrials        = 50;
+PresParams.PauseEvNtrials       = tacs_er.nEncStim/tacs_er.nEncBlocks;
 
 % determine cue response mapping depending on subject number and active
 % Keyboard.
@@ -72,7 +76,6 @@ PresParams.CueColorsID{1} = PresParams.CueColor1;
 PresParams.CueColorsID{2} = PresParams.CueColor2;
 
 enc_out.PresParams  = PresParams;
-enc_out.expInfo     = tacs_er;
 
 stimNames = tacs_er.EncStimNames;
 nTrials   = numel(stimNames);
@@ -134,8 +137,8 @@ try
     noiseTextures = cell(PresParams.Nmasks ,1);
     for ii = 1:PresParams.Nmasks
         noiseTextures{ii} = Screen('MakeTexture', window, rand(PresParams.nsMaskSize(1),PresParams.nsMaskSize(2)));
-        tstring = sprintf('Loading Noise Masks %g %%', floor(ii/PresParams.Nmasks *100));
-        DrawFormattedText(window,tstring,'center','center',255,50);
+        pgrStr = sprintf('Loading Noise Masks %g %%', floor(ii/PresParams.Nmasks *100));
+        DrawFormattedText(window,pgrStr,'center','center',255,50);
         Screen('Flip',window);
     end
     
@@ -143,8 +146,8 @@ try
     imgTextures = cell(nTrials,1);
     for ii = 1:nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
-        tstring = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
-        DrawFormattedText(window,tstring,'center','center',255,50);
+        pgrStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
+        DrawFormattedText(window,pgrStr,'center','center',255,50);
         Screen('Flip',window);
     end
     
@@ -161,7 +164,7 @@ try
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
-    tstring = ['Instructions\n\n' ...
+    InstStr = ['Instructions\n\n' ...
         'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
         'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
         'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...
@@ -170,7 +173,10 @@ try
         'Press ''' resumeKey ''' to begin the experiment.'];
     
     
-    DrawFormattedText(window,tstring, 'wrapat', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
+    PauseStr = ['Rest Pause. \\ '...
+                'To continue press the ''' resumeKey ''' key.' ];
+            
+    DrawFormattedText(window,InstStr, 'wrapat', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
     Screen('Flip',window);
     
     % resume if Resume Key is pressed
@@ -253,6 +259,13 @@ try
             save([thePath.subjectPath,tempName],'TimingInfo');
         end
         
+        % Pause and wait for resume every PresParams.PauseEvNtrials
+        if mod(tt,PresParams.PauseEvNtrials)==0                        
+            DrawFormattedText(window,PauseStr, 'center', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
+            Screen('Flip',window);
+            WaitTillResumeKey(resumeKey,activeKeyboardID)
+        end
+        
         % Discard used image texture
         Screen('Close', imgTextures{tt})
     end
@@ -262,6 +275,11 @@ try
     %---------------------------------------------------------------------%
     
     % store additional outputs
+    % output structure
+    enc_out = [];
+    enc_out.PresParams = PresParams;
+    tacs_er.Stimuli = []; % don't re-store stimuli 
+    enc_out.exptInfo  = tacs_er;
     enc_out.TimingInfo = TimingInfo;
     
     % save
@@ -281,10 +299,10 @@ try
     end        
     
     % End of Experiment string
-    tstring = ['End of Experiment.\n \n' ...
+    EndStr = ['End of Experiment.\n \n' ...
         'Press ''' resumeKey ''' to exit.'];
     
-    DrawFormattedText(window,tstring, 'center', 'center', 255, 40);
+    DrawFormattedText(window,EndStr, 'center', 'center', 255, 40);
     Screen('Flip',window);
     WaitTillResumeKey(resumeKey,activeKeyboardID)
 

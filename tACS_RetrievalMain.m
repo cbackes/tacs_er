@@ -194,7 +194,7 @@ try
     Priority(topPriorityLevel);
     
     % iterate through trials
-    for tt = 1:20%nTrials
+    for tt = 1:nTrials
         
         % empty flip var
         flip     = [];
@@ -319,7 +319,7 @@ try
                 else
                     DrawFormattedText(window,NoRespText, 'center' , 'center');
                     Screen('Flip', window, vbl + 0.5*ifi);
-k                    WaitSecs(1);
+                    WaitSecs(1);
                 end
             end
         end
@@ -328,8 +328,7 @@ k                    WaitSecs(1);
             tempName = sprintf('/tacs_er.s%i.test.%s.mat', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
             save([thePath.subjectPath,tempName],'TimingInfo');
         end
-        
-        
+     
         % Discard used image texture
         Screen('Close', imgTextures{tt})
         

@@ -1,6 +1,6 @@
 
 
-mainPath = '../data/behav/';
+mainPath = '~/Google Drive/Research/tACS/tACS_ER_task/data/behav_v3/';
 filename = 'tacs_er.test.mat';
 
 RespTypes = {'old','new','unsure'};
@@ -34,4 +34,7 @@ for kk = 1:nSubjs
     nScnFA    = BehavTableNums(4,1,kk);
     nScnCR    = BehavTableNums(4,2,kk);
     dPScns(kk) = calc_dPrime(nScnHits,nScnMiss,nScnFA,nScnCR);
+    
+   
 end
+nUnsures=sum(squeeze(BehavTableNums(:,3,:)));

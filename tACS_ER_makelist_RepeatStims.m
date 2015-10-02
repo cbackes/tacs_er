@@ -42,7 +42,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Sept 17th, 2015
+% LastUpdate:   Oct 2, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -68,6 +68,10 @@ switch thePath.exptType
         stimSize   = [300 300];
         nEncBlocks = 3;
         nCueTypes  = 1;
+    case {'behav_v5','behav_v6'} % v4 + 2 presentations
+        stimSize   = [300 300];
+        nEncBlocks = 4;
+        nCueTypes  = 2;        
 end
 
 nEncTrials = nEncBlocks*nEncStim;
