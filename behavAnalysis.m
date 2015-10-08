@@ -1,10 +1,10 @@
 
 
-mainPath = '~/Google Drive/Research/tACS/tACS_ER_task/data/behav_v3/';
+mainPath = '~/Google Drive/Research/tACS/tACS_ER_task/data/behav_v6/';
 filename = 'tacs_er.test.mat';
 
 RespTypes = {'old','new','unsure'};
-nSubjs = 5;
+nSubjs = 3;
 dPFaces = zeros(nSubjs,1);
 dPScns  =  zeros(nSubjs,1);
 
@@ -17,8 +17,7 @@ for kk = 1:nSubjs
     for ii = 1:4
         for jj = 1:numel(RespTypes)
             BehavTableNums(ii,jj,kk) = sum(strcmp(ret_out.TimingInfo.CondResp(ret_out.expInfo.RetCondTrialCode==ii),RespTypes{jj}));
-            BehavTableMeans(ii,jj,kk)=mean(strcmp(ret_out.TimingInfo.CondResp(ret_out.expInfo.RetCondTrialCode==ii),RespTypes{jj}));
-            
+            BehavTableMeans(ii,jj,kk)=mean(strcmp(ret_out.TimingInfo.CondResp(ret_out.expInfo.RetCondTrialCode==ii),RespTypes{jj}));            
         end
     end
     

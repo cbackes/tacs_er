@@ -58,7 +58,7 @@ PresParams.lineWidthPix         = 5;       % Set the line width for our fixation
 PresParams.Nmasks               = 50;      % number of noise masks
 PresParams.nsMaskSize           = tacs_er.stimSize;  % noise mask size (same as stimuli)
 PresParams.SaveEvNtrials        = 50;
-PresParams.PauseEvNtrials       = tacs_er.nEncStim/tacs_er.nEncBlocks;
+PresParams.PauseEvNtrials       = tacs_er.nEncStim; % after evry block
 
 % determine cue response mapping depending on subject number and active
 % Keyboard.

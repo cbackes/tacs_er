@@ -11,7 +11,7 @@ function [ret_out,msg]=tACS_RetrievalMain(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Sept 15, 2015
+% LastUpdate:   Oct 2, 2015
 % TO DO :       (1)EEG markers
 %------------------------------------------------------------------------%
 
@@ -49,14 +49,13 @@ laptopResponseKeys = ['j','k','l'];
 keypadResponseKeys = ['1','2','3'];
 RespConds         = {'old','unsure','new'};
 
-if mod(tacs_er.subjNum,2)
+if mod(thePath.subjNum,2)
     responseMap = [1,2,3];
 else
     responseMap = [3,2,1];
 end
 laptopResponseKeys = laptopResponseKeys(responseMap);
 keypadResponseKeys = keypadResponseKeys(responseMap);
-RespConds           = RespConds (responseMap);
 
 PresParams.RespConds = RespConds;
 
@@ -339,6 +338,7 @@ try
     % store additional outputs
     ret_out = [];
     ret_out.PresParams  = PresParams;
+    tacs_er.Stimuli = []; % don't re-store stimuli 
     ret_out.expInfo     = tacs_er;
     ret_out.TimingInfo  = TimingInfo;
     
