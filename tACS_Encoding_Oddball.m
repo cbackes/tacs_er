@@ -29,7 +29,7 @@ fileName = strcat(thePath.subjectPath,'/tacs_er.task.mat');
 if exist(fileName,'file')
     load(fileName);
 else
-    tacs_er =tACS_ER_makelist_RepeatStims(thePath);
+    tacs_er =tACS_ER_makelist_RS_Oddball(thePath);
 end
 
 % For debugging:
@@ -37,7 +37,7 @@ end
 
 % Presentation Parameters
 PresParams = [];
-PresParams.stimFrequency        = 6;
+PresParams.stimFrequency        = 5;
 
 PresParams.stimDurationInCycles = 0.5;
 PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDurationInCycles;
