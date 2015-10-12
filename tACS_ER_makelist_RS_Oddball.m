@@ -31,6 +31,7 @@ function [tacs_er] = tACS_ER_makelist_RS_Oddball(thePath)
 % EncCondCodeIDs    -> {'Face0','Face90','Face180','Scn0','Scn90','Scn180'}
 % EncCondTrialCode  -> VECTOR trial encoding indicating EncCondCodeID
 % EncStimNames      -> VECTOR trial stimulus ID
+% EncStimUniqueIDs  -> VECTOR trial with unique ID for each stim
 % EncBlockID        -> VECTOR trial block ID
 % EncOddBallTrials  -> VECTOR trial (BOOL) for trials that have an oddball
 % EncOddBallLocs    -> VECTOR trial (1-4) possible locations for oddballs
@@ -333,6 +334,7 @@ tacs_er.EncStimTypeIDs  = EncStimTypeIDs;
 tacs_er.EncCondTrialCode= EncCondTrialCode;
 tacs_er.EncCondCodeIDs  = EncCondCodeIDs;
 tacs_er.EncStimNames    = EncStimNames;
+tacs_er.EncStimUniqueIDs=EncStimUniqueIDs;
 tacs_er.EncBlockID      = EncBlockID;
 tacs_er.EncOddBallTrials = OddBallTrials;
 tacs_er.EncOddBallLocs   = OddBallLocs;

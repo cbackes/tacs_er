@@ -11,7 +11,7 @@ function [ret_out,msg]=tACS_RetrievalMain(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Oct 2, 2015
+% LastUpdate:   Oct 12, 2015
 % TO DO :       (1)EEG markers
 %------------------------------------------------------------------------%
 
@@ -41,6 +41,7 @@ PresParams.dotColor             = [1 1 1];
 PresParams.fixCrossColor        = [1 1 1];
 PresParams.textColor            = [1 1 1];
 PresParams.ConfidenceScale      = 0; % confidence scale flag
+PresParams.UnsureButtonOpt      = 0;
 PresParams.ConfBarColor         = [0.2 0.1385 1];
 
 % determine numbers for recognition decision
@@ -147,7 +148,7 @@ try
             'confidence in that decision by clicking on a scale with the mouse. \n\n'...
             'If no questions, \n'...'
             'Press ''' resumeKey ''' to begin the experiment.'];
-    else
+    elseif PresParams.UnsureButtonOpt
         InstString = ['Instructions\n\n' ...
             'You will be presented with images that you might recognized from the previous experiment. '...
             'Your task is to indentify which images were presented before and which ones are new '...
@@ -161,15 +162,35 @@ try
             PresParams.RespButtons(3) ' for low, medium and high confidence, respectively. \n\n'...
             'If there are no questions, \n'...'
             'Press ''' resumeKey ''' to begin the experiment.'];
+    else
+        InstString = ['Instructions\n\n' ...
+            'You will be presented with images that you might recognized from the previous experiment. '...
+            'Your task is to indentify which images were presented before and which ones are new '...
+            'by pressing a button. For ' RespConds{1} ' images you will be pressing the '...
+            PresParams.RespButtons(1) ' key, for ' RespConds{3} ' images you will press the '...
+            PresParams.RespButtons(3) ' key. You will have ' num2str(PresParams.MaxResponseTime) ...
+            ' seconds to respond, and please do so as quickly and as accurately as possible. '...
+            'If you identify the image as old or new, you will also be indicating your '...
+            'confidence by pressing ' PresParams.RespButtons(1) ', ' PresParams.RespButtons(2) ' and ' ...
+            PresParams.RespButtons(3) ' for low, medium and high confidence, respectively. \n\n'...
+            'If there are no questions, \n'...'
+            'Press ''' resumeKey ''' to begin the experiment.'];
     end
     
     NoRespText = 'No response recorded, please answer quicker!';
     
-    WrongKeyText = ['Please use only the following keys: \n \n' ...
-        PresParams.RespButtons(1) ' for ' RespConds{1} '\n' ...
-        PresParams.RespButtons(2) ' for ' RespConds{2} '\n' ...
-        PresParams.RespButtons(3) ' for ' RespConds{3} '\n\n'...
-        'Press ''' resumeKey ''' to continue'];
+    if PresParams.UnsureButtonOpt
+        WrongKeyText = ['Please use only the following keys: \n \n' ...
+            PresParams.RespButtons(1) ' for ' RespConds{1} '\n' ...
+            PresParams.RespButtons(2) ' for ' RespConds{2} '\n' ...
+            PresParams.RespButtons(3) ' for ' RespConds{3} '\n\n'...
+            'Press ''' resumeKey ''' to continue'];
+    else
+        WrongKeyText = ['Please use only the following keys: \n \n' ...
+            PresParams.RespButtons(1) ' for ' RespConds{1} '\n' ...
+            PresParams.RespButtons(3) ' for ' RespConds{3} '\n\n'...
+            'Press ''' resumeKey ''' to continue'];
+    end
     
     WrongConfKeyText = ['Please use only the following keys: \n \n' ...
         PresParams.RespButtons(1) ' for low confidence \n' ...
@@ -229,18 +250,32 @@ try
             TimingInfo.trialKeyPress{tt} = key;
             TimingInfo.trialRT(tt) = secs-trialTime;
             
-            switch key
-                case PresParams.RespButtons(1)
-                    TimingInfo.CondResp{tt} = RespConds{1};
-                case PresParams.RespButtons(2)
-                    TimingInfo.CondResp{tt} = RespConds{2};
-                case PresParams.RespButtons(3)
-                    TimingInfo.CondResp{tt} = RespConds{3};
-                otherwise
-                    TimingInfo.CondResp{tt} = 'wrongkey';
-                    DrawFormattedText(window, WrongKeyText, 'center' , 'center');
-                    Screen('Flip', window, vbl + 0.5*ifi);
-                    WaitTillResumeKey(resumeKey,activeKeyboardID)
+            if PresParams.UnsureButtonOpt
+                switch key
+                    case PresParams.RespButtons(1)
+                        TimingInfo.CondResp{tt} = RespConds{1};
+                    case PresParams.RespButtons(2)
+                        TimingInfo.CondResp{tt} = RespConds{2};
+                    case PresParams.RespButtons(3)
+                        TimingInfo.CondResp{tt} = RespConds{3};
+                    otherwise
+                        TimingInfo.CondResp{tt} = 'wrongkey';
+                        DrawFormattedText(window, WrongKeyText, 'center' , 'center');
+                        Screen('Flip', window, vbl + 0.5*ifi);
+                        WaitTillResumeKey(resumeKey,activeKeyboardID)
+                end
+            else
+                switch key
+                    case PresParams.RespButtons(1)
+                        TimingInfo.CondResp{tt} = RespConds{1};
+                    case PresParams.RespButtons(3)
+                        TimingInfo.CondResp{tt} = RespConds{3};
+                    otherwise
+                        TimingInfo.CondResp{tt} = 'wrongkey';
+                        DrawFormattedText(window, WrongKeyText, 'center' , 'center');
+                        Screen('Flip', window, vbl + 0.5*ifi);
+                        WaitTillResumeKey(resumeKey,activeKeyboardID)
+                end
             end
         else
             DrawFormattedText(window,NoRespText, 'center' , 'center');
@@ -327,7 +362,7 @@ try
             tempName = sprintf('/tacs_er.s%i.test.%s.mat', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
             save([thePath.subjectPath,tempName],'TimingInfo');
         end
-     
+        
         % Discard used image texture
         Screen('Close', imgTextures{tt})
         
@@ -338,7 +373,7 @@ try
     % store additional outputs
     ret_out = [];
     ret_out.PresParams  = PresParams;
-    tacs_er.Stimuli = []; % don't re-store stimuli 
+    tacs_er.Stimuli = []; % don't re-store stimuli
     ret_out.expInfo     = tacs_er;
     ret_out.TimingInfo  = TimingInfo;
     
