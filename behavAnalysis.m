@@ -1,10 +1,10 @@
 
 
-mainPath = '~/Google Drive/Research/tACS/tACS_ER_task/data/behav_v6/';
+mainPath = '~/Google Drive/Research/tACS/tACS_ER_task/data/behav_v7/';
 filename = 'tacs_er.test.mat';
 
 RespTypes = {'old','new','unsure'};
-nSubjs = 3;
+nSubjs = 4;
 dPFaces = zeros(nSubjs,1);
 dPScns  =  zeros(nSubjs,1);
 

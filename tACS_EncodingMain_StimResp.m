@@ -1,20 +1,20 @@
 
-function [enc_out,msg]=tACS_EncodingMain_CueResponse(thePath)
+function [enc_out,msg]=tACS_EncodingMain_StimResp(thePath)
 % tACS stimulus encoding presentation script.
 %
 % this scripts presents stimuli to be encoded for a time depending on
-% frequency of stimulation. the subject's task is to identify the color
-% of a fixation marker super-imposed on the stimuli of interest. stimuli
-% , stimulus order and stimulus conditions are pre-determined by the
-% tacs_er make list script. thePath indicates the path of the tacs_Eer
+% frequency of stimulation. the subject's task is to make a decision on the
+% presented stimuli
+% Stimulus order and stimulus conditions are pre-determined by the
+% tacs_er make list script. thePath indicates the path of the tacs_er
 % structure.
 %
-% subjects performance on the cue color identification is stored peridiocally.
+% subjects performance is stored peridiocally.
 %
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
-% Created:      Aug 1th, 2015
-% LastUpdate:   Oct 2th, 2015
+% Created:      Oct 26th, 2015
+% LastUpdate:   Oct 26th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -50,10 +50,6 @@ PresParams.ITI_Range            = [1 1.5]; % variable ITI in secs
 PresParams.MaxResponseTime      = 1.5;       % maximum to make perceptual decision
 PresParams.PreStimFixColor      = [1 1 1];
 PresParams.PreStimFixColorStr   = 'WHITE';
-PresParams.CueColor1            = [0.77 0.05 0.2];
-PresParams.CueColor1Str         = 'RED';
-PresParams.CueColor2            = [0.2 0.1385 1];
-PresParams.CueColor2Str         = 'BLUE';
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
 PresParams.Nmasks               = 50;      % number of noise masks
 PresParams.nsMaskSize           = tacs_er.stimSize;  % noise mask size (same as stimuli)
@@ -71,9 +67,6 @@ else
 end
 laptopResponseKeys = laptopResponseKeys(responseMap);
 keypadResponseKeys = keypadResponseKeys(responseMap);
-
-PresParams.CueColorsID{1} = PresParams.CueColor1;
-PresParams.CueColorsID{2} = PresParams.CueColor2;
 
 enc_out.PresParams  = PresParams;
 
@@ -103,11 +96,11 @@ try
     KbQueueStart(activeKeyboardID);
     
     if laptopKeyboardID==activeKeyboardID
-        PresParams.RespToCue1 = laptopResponseKeys(1);
-        PresParams.RespToCue2 = laptopResponseKeys(2);
+        PresParams.RespToFace = laptopResponseKeys(1);
+        PresParams.RespToScene = laptopResponseKeys(2);
     else
-        PresParams.RespToCue1 = keypadResponseKeys(1);
-        PresParams.RespToCue2 = keypadResponseKeys(2);
+        PresParams.RespToFace = keypadResponseKeys(1);
+        PresParams.RespToScene = keypadResponseKeys(2);
     end
     
     % initialie window
@@ -165,11 +158,15 @@ try
     % Participant Instructions
     %---------------------------------------------------------------------%
     InstStr = ['Instructions\n\n' ...
-        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
-        'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
-        'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...
+        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross, on top of a noise background. ' ...
+        'Try your best to always look at the Fixation Cross. \n'...
+        'At the start of every event, the background will turn into a face or scene image. '...
+        'Your task is to identify if the image is a face or a scene, by pressing: \n\n' ...
+        '' PresParams.RespToFace '' ' for face images \n'...
+        '' PresParams.RespToScene '' ' for scene images \n\n'...                        
         'You will have ' num2str(PresParams.MaxResponseTime) ' seconds to respond '...
         'as quickly and as accurately as possible. \n\n'...
+        'If no questions,\n'...
         'Press ''' resumeKey ''' to begin the experiment.'];
     
     
@@ -218,8 +215,7 @@ try
         KbQueueFlush(activeKeyboardID);
         
         % Draw Stimulus for stimFlipDurSecs
-        Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);
-        Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, cueColors(tt,:), [0 0], 2);
+        Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);        
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window, vbl + 0.5*ifi);
         TimingInfo.stimPresFlip{tt}=flip;

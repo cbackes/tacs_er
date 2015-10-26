@@ -42,7 +42,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Oct 2, 2015
+% LastUpdate:   Oct 26, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -71,7 +71,13 @@ switch thePath.exptType
     case {'behav_v5','behav_v6'} % v4 + 2 presentations
         stimSize   = [300 300];
         nEncBlocks = 4;
-        nCueTypes  = 2;        
+        nCueTypes  = 2; 
+    case 'behav_v8' % non-perceptual decision
+        stimSize   = [300 300];
+        nEncBlocks = 4;
+        nCueTypes  = 1; 
+    otherwise
+        error('experiment type not supported')
 end
 
 nEncTrials = nEncBlocks*nEncStim;
@@ -357,7 +363,7 @@ tacs_er.Stimuli = StimObj;
 cd(thePath.main)
 
 % Save into subjects path
-fileName = 'tacs_er_task.mat';
+fileName = 'tacs_er.task.mat';
 if ~exist([thePath.subjectPath '/' fileName],'file')
     save([thePath.subjectPath '/' fileName],'tacs_er')
 else
