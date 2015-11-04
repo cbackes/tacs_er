@@ -2,10 +2,10 @@ function [enc_out,msg]=tACS_Encoding_FlashStim_OddBallCueResp(thePath)
 % tACS stimulus encoding presentation script.
 %
 % this scripts presents stimuli to be encoded for a time depending on
-% frequency of stimulation. the stimulus will flash at that frequency 
+% frequency of stimulation. the stimulus will flash at that frequency
 % for a given duration. on a percentage of the trials the fixation c
 % cross will change colors, which the subjects will need to identify
-% it will only happen at a random point during the presentation of the 
+% it will only happen at a random point during the presentation of the
 % stimuli. stimuli, stimulus order and stimulus conditions are pre-determined by the
 % tacs_er make list  oddball. thePath indicates the path of the tacs_Eer
 % structure.
@@ -38,22 +38,25 @@ end
 % Presentation Parameters
 PresParams = [];
 switch tacs_er.exptType
-    case 'behav_v9'        
+    case 'behav_v9'
     otherwise
         error('task not supported')
 end
-    
-PresParams.stimFrequency        = 6;;    
+
+PresParams.stimFrequency        = 6;
 PresParams.stimDurationInCycles  = 0.5;
 PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDurationInCycles;
-PresParams.nCycles              = PresParams.stimFrequency*2; % two seconds
+PresParams.totalStimDuration    = 2.5;
+PresParams.nCycles              = PresParams.stimFrequency*PresParams.totalStimDuration;
 PresParams.stimPresCycles       = ones(PresParams.nCycles,1); % stimuli will be presented every cycle
-PresParams.OddBallCycleRange    = [2 10]; % range in which the oddball might be presented
+PresParams.OddBallnCycles       = 2;
+PresParams.OddBallCycleRange    = [2 PresParams.nCycles-PresParams.OddBallnCycles-1]; % range in which the oddball might be presented
+
 
 PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
 PresParams.ITI_Range            = [0.5 1]; % variable ITI in secs
 PresParams.PostStimTime         = 0.5;     % time after stim (with no fixation).
-PresParams.PreStimFixColor      = [1 0 1];
+PresParams.PreStimFixColor      = [0.53 0.1 0.53];
 PresParams.PreStimFixColorStr   = 'PURPLE';
 PresParams.CueColor1            = [0.77 0.05 0.2];
 PresParams.CueColor1Str         = 'RED';
@@ -135,7 +138,7 @@ try
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
-    for ii = 1:nTrials
+    for ii = 1:10%nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
         pgrStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
         DrawFormattedText(window,pgrStr,'center','center',255,50);
@@ -153,24 +156,24 @@ try
     end
     
     % set oddball cycle presentation
-    oddBallCycle = randi(PresParams.PresParams.OddBallCycleRange,nTrials,1);
+    oddBallCycle = randi(PresParams.OddBallCycleRange,nTrials,1);
     PresParams.oddBallCycle =oddBallCycle;
-
+    
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
     InstStr = ['Instructions\n\n' ...
         'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
-        'A trial will start with the presentation of an image that will come on and off for 2 seconds.' ...
-        'On some trials, the centrally presented fixation cross will change colors for a short duration.' ...
-        'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
-        'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...        
+        'A trial will start with the presentation of an image that will be shwon on and off for 2 seconds. ' ...
+        'On some trials, the centrally presented fixation cross will change colors for a short duration. ' ...
+        'Your task is to respond with ''' PresParams.RespToCue1 ''' for the ' PresParams.CueColor1Str ' Fixation and '...
+        'with ''' PresParams.RespToCue2 ''' for ' PresParams.CueColor2Str ' Fixations. \n\n' ...
         'If no questions, \n'...
-        'Press ''' resumeKey ''' to begin the experiment.'];    
+        'Press ''' resumeKey ''' to begin the experiment.'];
     
     PauseStr = ['Rest Pause. \\ '...
-                'To continue press the ''' resumeKey ''' key.' ];
-            
+        'To continue press the ''' resumeKey ''' key.' ];
+    
     DrawFormattedText(window,InstStr, 'wrapat', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
     Screen('Flip',window);
     
@@ -194,14 +197,14 @@ try
         % empty flip var
         flip     = [];
         
-        % Pre-stimulus (variable ITI); store the first one        
+        % Pre-stimulus (variable ITI); store the first one
         Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window);
         TimingInfo.preStimMaskFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
         
-        for ii=1:(ITIsFrames(tt)-1)            
+        for ii=1:(ITIsFrames(tt)-1)
             Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
             vbl = Screen('Flip', window, vbl + 0.5*ifi);
         end
@@ -217,41 +220,46 @@ try
             if ii==1
                 Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
                 [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
-                = Screen('Flip', window, vbl + 0.5*ifi);                            
+                    = Screen('Flip', window, vbl + 0.5*ifi);
                 trialTime = GetSecs;
-            end
-            if tacs_er.EncOddBallTrials(ii) && oddBallCycle(tt)==ii
+                vbl = flip.VBLTimestamp;
+                
+                Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
+                vbl  = Screen('Flip', window, vbl + stimFlipDurSecs);
+            elseif (oddBallCycle(tt)-ii>=0 && oddBallCycle(tt)-ii<PresParams.OddBallnCycles) && tacs_er.EncOddBallTrials(tt)
                 Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, cueColors(tt,:), [0 0], 2);
                 [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
-                = Screen('Flip', window, vbl + stimFlipDurSecs);            
+                    = Screen('Flip', window, vbl + stimFlipDurSecs);
+                vbl = flip.VBLTimestamp;
+                
+                Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, cueColors(tt,:), [0 0], 2);
+                vbl  = Screen('Flip', window, vbl + stimFlipDurSecs);
             else
                 Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
                 [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
-                = Screen('Flip', window, vbl + stimFlipDurSecs);            
+                    = Screen('Flip', window, vbl + stimFlipDurSecs);
+                vbl = flip.VBLTimestamp;
+                
+                Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
+                vbl  = Screen('Flip', window, vbl + stimFlipDurSecs);
             end
-            TimingInfo.stimPresFlip{tt,ii}=flip;          
-            vbl = flip.VBLTimestamp;
-
-            Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
-            [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
-                = Screen('Flip', window, vbl + stimFlipDurSecs);
-          
+            TimingInfo.stimPresFlip{tt,ii}=flip;
         end
         [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-        if pressed & tacs_er.EncOddBallTrials(ii)
+        if pressed && tacs_er.EncOddBallTrials(tt)
             TimingInfo.trialKeyPress{tt} = KbName(firstPress);
-            TimingInfo.trialRT(tt) = firstPress(find(firstPress,1))-trialTime;            
-        end  
+            TimingInfo.trialRT(tt) = firstPress(find(firstPress,1))-trialTime;
+        end
         
-        % Draw Post-Stim Blank        
+        % Draw Post-Stim Blank
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window, vbl + stimFlipDurSecs);
         TimingInfo.postStimMaskFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
-        for ii = 1:(postStimFrames-1)            
+        for ii = 1:(postStimFrames-1)
             vbl  = Screen('Flip', window,vbl + 0.5*ifi);
         end
-
+        
         % save every PresParams.SaveEvNtrials
         if mod(tt,PresParams.SaveEvNtrials)==0
             tempName = sprintf('/tacs_er.s%i.encoding.%s.mat;', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
@@ -259,7 +267,7 @@ try
         end
         
         % Pause and wait for resume every PresParams.PauseEvNtrials
-        if mod(tt,PresParams.PauseEvNtrials)==0                        
+        if mod(tt,PresParams.PauseEvNtrials)==0
             DrawFormattedText(window,PauseStr, 'center', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
             Screen('Flip',window);
             WaitTillResumeKey(resumeKey,activeKeyboardID)
@@ -277,7 +285,7 @@ try
     % output structure
     enc_out = [];
     enc_out.PresParams = PresParams;
-    tacs_er.Stimuli = []; % don't re-store stimuli 
+    tacs_er.Stimuli = []; % don't re-store stimuli
     enc_out.exptInfo  = tacs_er;
     enc_out.TimingInfo = TimingInfo;
     
@@ -295,7 +303,7 @@ try
             fileName = strcat('tacs_er.encoding','-',num2str(cnt),'.mat');
             warning(strcat('saving as ', filenName))
         end
-    end        
+    end
     
     % End of Experiment string
     EndStr = ['End of Experiment.\n \n' ...
@@ -304,7 +312,7 @@ try
     DrawFormattedText(window,EndStr, 'center', 'center', 255, 40);
     Screen('Flip',window);
     WaitTillResumeKey(resumeKey,activeKeyboardID)
-
+    
     msg='allGood';
 catch msg
     sca

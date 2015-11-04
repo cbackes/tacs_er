@@ -4,7 +4,7 @@ function [Window, Rect] = initializeScreen
 
 % Here we call some default settings for setting up Psychtoolbox
 PsychDefaultSetup(2);
-Screen('Preference', 'SkipSyncTests', 1);
+Screen('Preference', 'SkipSyncTests', 0);
 
 screenNumber = max(Screen('Screens')); % 0 = main display
 white = WhiteIndex(screenNumber);
