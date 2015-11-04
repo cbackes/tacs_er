@@ -138,7 +138,7 @@ try
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
-    for ii = 1:10%nTrials
+    for ii = 1:nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
         pgrStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
         DrawFormattedText(window,pgrStr,'center','center',255,50);
