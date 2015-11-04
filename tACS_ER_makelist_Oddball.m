@@ -1,11 +1,11 @@
 
-function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
+function [tacs_er] = tACS_ER_makelist_OddBall(thePath)
 % make lists for tacs encoding & retrieval (tacs_er) experiment
 % This design:
-% 1) all stimuli is presented twice, once per encoding block
-% 2) responses are made to cue. counter balance cue responses per stimuli
-% -> tom cruise: block 1. yes, block 2 no.
-
+% 1) oddball conditions at 20% rate (throw-out trials)
+% 2) responses are made to the color of the oddball, which can happen at any time during the 
+%    stimulus presentation
+%
 % Important variables
 % subjNum       -> subject  ID
 % thePath       -> path for all stimulus and data directories
@@ -14,6 +14,7 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 % nEncTrials    -> # of TOTAL trials (should be multiple of nEncStim)
 % nEncCond      -> # of conditions at encoding (that are critical for retrieval)
 % nEncBlocks    -> # of encoding blocks
+% nEncOddBalls  -> # of encoding oddballs
 %
 % nRetTrials    -> # of TOTAL retrieval trials
 % nFoilTrials   -> # of NEW trials (foils)
@@ -29,9 +30,13 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 % EncCondCodeIDs    -> {'Face0','Face90','Face180','Scn0','Scn90','Scn180'}
 % EncCondTrialCode  -> VECTOR trial encoding indicating EncCondCodeID
 % EncStimNames      -> VECTOR trial stimulus ID
-% EncStimCue        -> VECTOR trial code for cue ID
+% EncStimUniqueIDs  -> VECTOR trial with unique ID for each stim
 % EncBlockID        -> VECTOR trial block ID
-%
+% EncOddBallTrials  -> VECTOR trial (BOOL) for trials that have an oddball
+% EncOddBallConds   -> VECTOR trial indicating the condition for the oddball (color/location)
+% (NaNs for trials not having an oddball).
+
+% 
 % RetCondIDs        -> {'OldFace','OldScene','NewFace','NewScene'};
 % RetCondTrialCode  -> VECTOR trial 1:4, indicating RetCondID
 % RetStimNames      -> VECTOR trial of retrieaval IDs
@@ -41,52 +46,30 @@ function [tacs_er] = tACS_ER_makelist_RepeatStims(thePath)
 
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
-% Created:      Aug 20th, 2015
-% LastUpdate:   Oct 26, 2015
+% Created:      Nov 3th, 2015
+% LastUpdate:   Nov 3th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
 
 % parameter list
-nUniqueFaceStimuli = 120;
-nUniqueSceneStimuli = 120;
+nUniqueFaceStimuli = 150;
+nUniqueSceneStimuli = 150;
 nEncStim    = nUniqueSceneStimuli+ nUniqueFaceStimuli;
 nEncPhases = 6;
 nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
 EncPhases  = 0:(360/nEncPhases):359;
+nOddBalls  = nEncStim*0.20; % one per unique stim
 
 switch thePath.exptType
-    case 'behav'
-        stimSize   = [225 225]; % famous
-        nEncBlocks = 2;
-        nCueTypes  = 2;
-    case 'behav_v3'
-        stimSize   = [300 300]; %non-famous
-        nEncBlocks = 2;
-        nCueTypes  = 2;
-    case 'behav_v4' % non-famous, passive viewing
-        stimSize   = [300 300];
-        nEncBlocks = 3;
-        nCueTypes  = 1;
-    case {'behav_v5','behav_v6'} % v4 + 2 presentations
-        stimSize   = [300 300];
-        nEncBlocks = 4;
-        nCueTypes  = 2; 
-    case 'behav_v8' % non-perceptual decision
-        stimSize   = [300 300];
-        nEncBlocks = 4;
-        nCueTypes  = 1; 
-    case 'behav_v9' % multiple consecutive presentations 
-        stimSize   = [300 300];
-        nEncBlocks = 2;
-        nCueTypes  = 1; 
-        
-    otherwise
-        error('experiment type not supported')
+    case 'behav_v9'
+        stimSize        = [300 300];
+        nEncBlocks      = 1;
+        nOddBallConds   = 2;
 end
 
 nEncTrials = nEncBlocks*nEncStim;
-nRetTrials = 360;   % encoding trials + retrieval trials
+nRetTrials = nEncStim*1.5;   % encoding trials + retrieval trials
 nFoilTrials =nRetTrials-nEncStim;
 nRetConds  = 4;     % old and new conditons per stim type (Face/scene)
 nRetBlocks = nEncBlocks;    % blocks
@@ -99,11 +82,8 @@ if strfind(version,'R2014b')>0
 end
 
 %% load data names
-if strcmp(thePath.exptType,'behav') % famous
-    cd(fullfile(thePath.stim,'landmarks'));
-else
-    cd(fullfile(thePath.stim,'notfamous_scenes/cropped'));
-end
+% scenes
+cd(fullfile(thePath.stim,'notfamous_scenes/cropped'));
 temp = dir('*.jpg');
 count = 1;
 ScenesMat = cell(numel(temp),1);
@@ -118,17 +98,14 @@ for n = 1:size(temp,1)
         fprintf(['\n' temp(n).name ' unreadable\n']);
     end
 end
-
 %get the names in a cell array and shuffle
 SceneNames = {SceneNames.name}';
 [SceneNames,index] = Shuffle(SceneNames);
 ScenesMat = ScenesMat(index);
 
-if strcmp(thePath.exptType,'behav') % famous
-    cd(fullfile(thePath.stim,'people'));
-else
-    cd(fullfile(thePath.stim,'notfamous_people/cropped'));
-end
+
+% faces
+cd(fullfile(thePath.stim,'notfamous_people/cropped'));
 temp = dir('*.jpg');
 count = 1;
 FacesMat = cell(numel(temp),1);
@@ -148,16 +125,15 @@ FaceNames = {FaceNames.name}';
 FacesMat = FacesMat(index);
 
 StimObj = containers.Map( [FaceNames; SceneNames], [FacesMat; ScenesMat]);
+
 %% Encoding
 % Equal numbers of faces and scenes: #N encoding trials/2 per type
 % Each block will have one of each of stimuli, for a total of # of blocks x
 % # of unique stimuli.
 %
-% Association Cue Form:
-% Three options for associated cue (say red/blue)
-% 1) Associated cue alternates by block
-% 2) Associated cue 50% chance of one or the other
-% 3) Associated cue stays the same per stimuli.
+% Oddball can be in 4 locations
+% Each stimuli will be associated with one, and then allocated across blocks
+% such that the same stimuli appears only once with the associted oddball
 %
 % EncStimType -> 1 for faces, 2 for scenes
 % EncStimCue  -> 1 or 2
@@ -168,9 +144,12 @@ StimObj = containers.Map( [FaceNames; SceneNames], [FacesMat; ScenesMat]);
 EncStimTypeIDs = {'Face','Scene'};
 EncStimType = zeros(nEncTrials,1);
 EncBlockID  = zeros(nEncTrials,1);
-EncStimCue  = ones(nEncTrials,1);
 EncStimNames = cell(nEncTrials,1);
 nEncTrialsBlock = nEncTrials/nEncBlocks;
+nOddBallsBlock  = nOddBalls/nEncBlocks;
+nOddBallsBlockConds = nOddBallsBlock/nOddBallConds; % # OB per location per block (60 in current design)
+OddBallTrials   = false(nEncTrials,1);
+OddBallConds     = nan(nEncTrials,1);
 nFacesEncBlock  = nEncTrialsBlock/2;
 nScenesEncBlock = nFacesEncBlock;
 
@@ -179,7 +158,9 @@ temp = Shuffle(FaceNames);
 EncFaces = temp(1:nFacesEncBlock);
 temp = Shuffle(SceneNames);
 EncScenes = temp(1:nScenesEncBlock);
+EncStimUniqueIDs = zeros(nEncTrials,2); EncStimUniqueIDs(:,1)=1:nEncTrials;
 
+% assign face/scence trials
 for bb = 1:nEncBlocks
     TrialBlockID = ((bb-1)*nEncTrialsBlock+1):bb*nEncTrialsBlock;
     FaceTrials  = datasample(TrialBlockID,nFacesEncBlock,'replace',false);
@@ -189,32 +170,42 @@ for bb = 1:nEncBlocks
     EncStimType(SceneTrials) = 2;
     
     % assign individial stimuli to trials
-    EncStimNames(FaceTrials) = Shuffle(EncFaces);
-    EncStimNames(SceneTrials) = Shuffle(EncScenes);
+    FaceBlockUniqueID        = randperm(nFacesEncBlock,nFacesEncBlock);
+    ScnBlockUniqueID         = randperm(nScenesEncBlock,nScenesEncBlock);
+    EncStimUniqueIDs(FaceTrials,2) = FaceBlockUniqueID;
+    EncStimUniqueIDs(SceneTrials,2) = ScnBlockUniqueID+nFacesEncBlock;
     
-    % associate a cue
-    if nCueTypes>1
-        if bb ==1
-            % associated cue alternates by block; first one is random
-            cues = Shuffle([ones(nFacesEncBlock/2,1); 2*ones(nFacesEncBlock/2,1)]);
-            EncStimCue(FaceTrials) = Shuffle(cues);
-            EncStimCue(SceneTrials) = Shuffle(cues);
-            blockCues = EncStimCue(TrialBlockID);
-        else
-            % index of new order of stimuli
-            [~,i]=ismember(EncStimNames(EncBlockID==bb),EncStimNames(EncBlockID==1));
-            
-            % alternate associated cue
-            if mod(bb,2)==0
-                EncStimCue(TrialBlockID)=mod(blockCues(i),2)+1;
-            else
-                EncStimCue(TrialBlockID)=blockCues(i);
-            end
-        end
+    EncStimNames(FaceTrials)  = EncFaces(FaceBlockUniqueID);
+    EncStimNames(SceneTrials) = EncScenes(ScnBlockUniqueID);
+    
+    %select stims for odd balls and keep track of the ones by block
+    if bb==1
+        % all are available in the first block
+        availableFaceIDs  = EncStimUniqueIDs(FaceTrials);
+        availableSceneIDs = EncStimUniqueIDs(SceneTrials);
+    end
+    oddballFaceIDs = datasample(availableFaceIDs,nOddBallsBlock/2,'replace',false);
+    oddballScnIDS  = datasample(availableSceneIDs,nOddBallsBlock/2,'replace',false);
+    
+    OddBallTrials(TrialBlockID) = ismember(EncStimUniqueIDs(TrialBlockID,2),oddballFaceIDs) | ...
+        ismember(EncStimUniqueIDs(TrialBlockID,2),oddballScnIDS);
+    
+    availableFaceIDs    = setdiff(availableFaceIDs,oddballFaceIDs);
+    availableSceneIDs   = setdiff(availableSceneIDs,oddballScnIDS);
+    
+    % assign locations for oddballs
+    x = find(OddBallTrials(TrialBlockID));
+    for ll = 1:nOddBallConds
+        y = datasample(x,nOddBallsBlockConds,'replace',false);
+        OddBallConds(TrialBlockID(y)) = ll;
+        x = setdiff(x,y);
     end
 end
 
-% assign encoding conditions
+assert(sum(histc(OddBallConds,1:nOddBallConds)==nOddBallsBlock/nOddBallConds)==nOddBallConds,'uneven oddball!')
+assert(sum(OddBallTrials)==nOddBalls,'oddball numbers do not match!!')
+
+%% assign encoding conditions
 % max 12 condtions for a 2 x 6 design
 %
 % ** Note, not counterbalancing by stimuli at the moment, that would have
@@ -237,22 +228,19 @@ for bb = 1:nEncBlocks
     
     % for face trials
     nFaceConds=numel(faceConds);
-    for jj=1:nCueTypes
-        availableFaceTrials = intersect(find(EncStimType==1 & EncStimCue==jj),TrialBlockID);
-        for ii = 1:nFaceConds
-            condiTrials=datasample(availableFaceTrials,nEncCondBlockTrials/nCueTypes,'replace',false);
-            EncCondTrialCode(condiTrials) = faceConds(ii);
-            availableFaceTrials = setdiff(availableFaceTrials,condiTrials);
-        end
-        
-        % for scenes trials
-        nSceneConds=numel(sceneConds);
-        availableSceneTrials = intersect(find(EncStimType==2 & EncStimCue==jj),TrialBlockID);
-        for ii = 1:nSceneConds
-            condiTrials=datasample(availableSceneTrials,nEncCondBlockTrials/nCueTypes,'replace',false);
-            EncCondTrialCode(condiTrials) = sceneConds(ii);
-            availableSceneTrials = setdiff(availableSceneTrials,condiTrials);
-        end
+    availableFaceTrials = intersect(find(EncStimType==1),TrialBlockID);
+    for ii = 1:nFaceConds
+        condiTrials=datasample(availableFaceTrials,nEncCondBlockTrials,'replace',false);
+        EncCondTrialCode(condiTrials) = faceConds(ii);
+        availableFaceTrials = setdiff(availableFaceTrials,condiTrials);
+    end
+    % for scenes trials
+    nSceneConds=numel(sceneConds);
+    availableSceneTrials = intersect(find(EncStimType==2),TrialBlockID);
+    for ii = 1:nSceneConds
+        condiTrials=datasample(availableSceneTrials,nEncCondBlockTrials,'replace',false);
+        EncCondTrialCode(condiTrials) = sceneConds(ii);        
+        availableSceneTrials = setdiff(availableSceneTrials,condiTrials);
     end
 end
 
@@ -314,7 +302,6 @@ RetStimNames(RetCondTrialCode==2) = Shuffle(EncScenes); % old scenes
 RetStimNames(RetCondTrialCode==3) = Shuffle(FoilFaces); % new faces
 RetStimNames(RetCondTrialCode==4) = Shuffle(FoilScenes); % new scenes
 
-
 %% store necessary variables
 tacs_er = [];
 tacs_er.subjNum     = thePath.subjNum;
@@ -328,6 +315,8 @@ tacs_er.nEncConds  = nEncConds;
 tacs_er.nEncPhases = nEncPhases;
 tacs_er.EncPhases  = EncPhases;
 tacs_er.nEncBlocks = nEncBlocks;
+tacs_er.nEncOddBalls = nOddBalls;
+
 tacs_er.stimSize    = stimSize;
 tacs_er.nRetTrials = nRetTrials;
 tacs_er.nFoilTrials = nFoilTrials;
@@ -343,8 +332,10 @@ tacs_er.EncStimTypeIDs  = EncStimTypeIDs;
 tacs_er.EncCondTrialCode= EncCondTrialCode;
 tacs_er.EncCondCodeIDs  = EncCondCodeIDs;
 tacs_er.EncStimNames    = EncStimNames;
-tacs_er.EncStimCue      = EncStimCue;
+tacs_er.EncStimUniqueIDs=EncStimUniqueIDs;
 tacs_er.EncBlockID      = EncBlockID;
+tacs_er.EncOddBallTrials = OddBallTrials;
+tacs_er.EncOddBallConds  = OddBallConds;
 
 % retrieval
 tacs_er.RetCondIDs      = RetCondIDs;

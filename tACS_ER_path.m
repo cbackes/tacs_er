@@ -12,6 +12,7 @@ function thePath = tACS_ER_path(subjNum,exptType)
 %   'behav_v7'  --> 4 presentations, left/right oddball in one of
 %   presentations
 %   'behav_v8'  --> 4 presentations with face/scene decision on stimuli
+%   'behav_v9'  --> multiple presentations whithin a trial, cue color oddball response
 %   'eeg'       --> eeg at encoding and retrieval (no tacs)
 %   'eeg_enc'    --> eeg at encoding only (no tacs)
 %   'tacs_enc'   --> tacs at encoding
@@ -21,11 +22,11 @@ function thePath = tACS_ER_path(subjNum,exptType)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez (from similar lab copies)
 % Created:      May 25, 2015
-% LastUpdate:   Oct 9, 2015
+% LastUpdate:   Nov 6s, 2015
 %------------------------------------------------------------------------%
 
 exptOptions = {'behav','behav_v3','behav_v4','behav_v5','behav_v6',...
-    'behav_v7','behav_v8','eeg','eeg_enc','tacs_enc'};
+    'behav_v7','behav_v8','behav_v9','eeg','eeg_enc','tacs_enc'};
 
 if ~any(strcmp(exptOptions,exptType))
     error('Experiment type not available; please see help tACS_ER_path')

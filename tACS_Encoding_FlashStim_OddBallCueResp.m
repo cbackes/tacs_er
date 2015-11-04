@@ -1,20 +1,21 @@
-
-function [enc_out,msg]=tACS_EncodingMain_StimResp(thePath)
+function [enc_out,msg]=tACS_Encoding_FlashStim_OddBallCueResp(thePath)
 % tACS stimulus encoding presentation script.
 %
 % this scripts presents stimuli to be encoded for a time depending on
-% frequency of stimulation. the subject's task is to make a decision on the
-% presented stimuli
-% Stimulus order and stimulus conditions are pre-determined by the
-% tacs_er make list script. thePath indicates the path of the tacs_er
+% frequency of stimulation. the stimulus will flash at that frequency 
+% for a given duration. on a percentage of the trials the fixation c
+% cross will change colors, which the subjects will need to identify
+% it will only happen at a random point during the presentation of the 
+% stimuli. stimuli, stimulus order and stimulus conditions are pre-determined by the
+% tacs_er make list  oddball. thePath indicates the path of the tacs_Eer
 % structure.
 %
-% subjects performance is stored peridiocally.
+% subjects performance on the cue color identification is stored peridiocally.
 %
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
-% Created:      Oct 26th, 2015
-% LastUpdate:   Oct 26th, 2015
+% Created:      Nov 3th, 2015
+% LastUpdate:   Nov 3th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -24,7 +25,7 @@ close all;
 sca;
 
 % load the task
-fileName = strcat(thePath.subjectPath,'/tacs_er_task.mat');
+fileName = strcat(thePath.subjectPath,'/tacs_er.task.mat');
 if exist(fileName,'file')
     load(fileName);
 else
@@ -37,22 +38,28 @@ end
 % Presentation Parameters
 PresParams = [];
 switch tacs_er.exptType
-    case 'behav_v8'
-        PresParams.stimFrequency        = 5;
+    case 'behav_v9'        
     otherwise
-        error('unsuported experiment type')
+        error('task not supported')
 end
     
-PresParams.stimDurationInCycles = 0.5;
+PresParams.stimFrequency        = 6;;    
+PresParams.stimDurationInCycles  = 0.5;
 PresParams.stimDurationInSecs   = 1/PresParams.stimFrequency*PresParams.stimDurationInCycles;
+PresParams.nCycles              = PresParams.stimFrequency*2; % two seconds
+PresParams.stimPresCycles       = ones(PresParams.nCycles,1); % stimuli will be presented every cycle
+PresParams.OddBallCycleRange    = [2 10]; % range in which the oddball might be presented
+
 PresParams.cueDurationInSecs    = PresParams.stimDurationInSecs;
-PresParams.ITI_Range            = [1 1.5]; % variable ITI in secs
-PresParams.MaxResponseTime      = 1.5;       % maximum to make perceptual decision
-PresParams.PreStimFixColor      = [1 1 1];
-PresParams.PreStimFixColorStr   = 'WHITE';
+PresParams.ITI_Range            = [0.5 1]; % variable ITI in secs
+PresParams.PostStimTime         = 0.5;     % time after stim (with no fixation).
+PresParams.PreStimFixColor      = [1 0 1];
+PresParams.PreStimFixColorStr   = 'PURPLE';
+PresParams.CueColor1            = [0.77 0.05 0.2];
+PresParams.CueColor1Str         = 'RED';
+PresParams.CueColor2            = [0.2 0.1385 1];
+PresParams.CueColor2Str         = 'BLUE';
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
-PresParams.Nmasks               = 50;      % number of noise masks
-PresParams.nsMaskSize           = tacs_er.stimSize;  % noise mask size (same as stimuli)
 PresParams.SaveEvNtrials        = 50;
 PresParams.PauseEvNtrials       = tacs_er.nEncStim; % after evry block
 
@@ -68,7 +75,8 @@ end
 laptopResponseKeys = laptopResponseKeys(responseMap);
 keypadResponseKeys = keypadResponseKeys(responseMap);
 
-enc_out.PresParams  = PresParams;
+PresParams.CueColorsID{1} = PresParams.CueColor1;
+PresParams.CueColorsID{2} = PresParams.CueColor2;
 
 stimNames = tacs_er.EncStimNames;
 nTrials   = numel(stimNames);
@@ -78,9 +86,9 @@ nTrials   = numel(stimNames);
 % Initialize trial timing structure
 TimingInfo = [];
 TimingInfo.preStimMaskFlip = cell(nTrials,1);
-TimingInfo.stimPresFlip = cell(nTrials,1);
+TimingInfo.stimPresFlip = cell(nTrials,PresParams.nCycles);
 TimingInfo.postStimMaskFlip = cell(nTrials,1);
-TimingInfo.trialRT          = zeros(nTrials,1);
+TimingInfo.trialRT          = nan(nTrials,1);
 TimingInfo.trialKeyPress    = cell(nTrials,1);
 
 try
@@ -96,11 +104,11 @@ try
     KbQueueStart(activeKeyboardID);
     
     if laptopKeyboardID==activeKeyboardID
-        PresParams.RespToFace = laptopResponseKeys(1);
-        PresParams.RespToScene = laptopResponseKeys(2);
+        PresParams.RespToCue1 = laptopResponseKeys(1);
+        PresParams.RespToCue2 = laptopResponseKeys(2);
     else
-        PresParams.RespToFace = keypadResponseKeys(1);
-        PresParams.RespToScene = keypadResponseKeys(2);
+        PresParams.RespToCue1 = keypadResponseKeys(1);
+        PresParams.RespToCue2 = keypadResponseKeys(2);
     end
     
     % initialie window
@@ -123,42 +131,42 @@ try
     
     % fixed stimulus duration
     stimDurFrames      = round(PresParams.stimDurationInSecs/ifi);
-    % post-stim max response period duration
-    MaxRespFrames       = round(PresParams.MaxResponseTime /ifi);
-    
-    % creat noise masks
-    noiseTextures = cell(PresParams.Nmasks ,1);
-    for ii = 1:PresParams.Nmasks
-        noiseTextures{ii} = Screen('MakeTexture', window, rand(PresParams.nsMaskSize(1),PresParams.nsMaskSize(2)));
-        pgrStr = sprintf('Loading Noise Masks %g %%', floor(ii/PresParams.Nmasks *100));
-        DrawFormattedText(window,pgrStr,'center','center',255,50);
-        Screen('Flip',window);
-    end
+    postStimFrames     = round(PresParams.PostStimTime/ifi);
     
     % pre-make image textures
     imgTextures = cell(nTrials,1);
-    for ii = 1:10%nTrials
+    for ii = 1:nTrials
         imgTextures{ii}=Screen('MakeTexture', window, tacs_er.Stimuli(stimNames{ii}));
         pgrStr = sprintf('Loading Stimuli  %g %%',floor(ii/nTrials*100));
         DrawFormattedText(window,pgrStr,'center','center',255,50);
         Screen('Flip',window);
     end
-        
+    
+    % Set oddball color cue color
+    cueColors = nan(nTrials,3);
+    for ii = 1:nTrials
+        if tacs_er.EncOddBallConds(ii)==1
+            cueColors(ii,:) = PresParams.CueColorsID{1};
+        elseif tacs_er.EncOddBallConds(ii)==2
+            cueColors(ii,:) = PresParams.CueColorsID{2};
+        end
+    end
+    
+    % set oddball cycle presentation
+    oddBallCycle = randi(PresParams.PresParams.OddBallCycleRange,nTrials,1);
+    PresParams.oddBallCycle =oddBallCycle;
+
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
     InstStr = ['Instructions\n\n' ...
-        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross, on top of a noise background. ' ...
-        'Try your best to always look at the Fixation Cross. \n'...
-        'At the start of every event, the background will turn into a face or scene image. '...
-        'Your task is to identify if the image is a face or a scene, by pressing: \n\n' ...
-        '' PresParams.RespToFace '' ' for faces \n'...
-        '' PresParams.RespToScene '' ' for scenes \n\n'...                        
-        'You will have ' num2str(PresParams.MaxResponseTime) ' seconds to respond '...
-        'as quickly and as accurately as possible. \n\n'...
-        'If no questions,\n'...
-        'Press ''' resumeKey ''' to begin the experiment.'];
-    
+        'You will be presented with a ' PresParams.PreStimFixColorStr ' Fixation  Cross. ' ...
+        'A trial will start with the presentation of an image that will come on and off for 2 seconds.' ...
+        'On some trials, the centrally presented fixation cross will change colors for a short duration.' ...
+        'Your task is to respond with ' PresParams.RespToCue1 ' for the ' PresParams.CueColor1Str ' Fixation and '...
+        'with ' PresParams.RespToCue2 ' for ' PresParams.CueColor2Str ' Fixations. ' ...        
+        'If no questions, \n'...
+        'Press ''' resumeKey ''' to begin the experiment.'];    
     
     PauseStr = ['Rest Pause. \\ '...
                 'To continue press the ''' resumeKey ''' key.' ];
@@ -186,16 +194,14 @@ try
         % empty flip var
         flip     = [];
         
-        % Pre-stimulus noise mask (variable ITI); store the first one
-        Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
+        % Pre-stimulus (variable ITI); store the first one        
         Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window);
         TimingInfo.preStimMaskFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
         
-        for ii=1:(ITIsFrames(tt)-1)
-            Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
+        for ii=1:(ITIsFrames(tt)-1)            
             Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
             vbl = Screen('Flip', window, vbl + 0.5*ifi);
         end
@@ -204,41 +210,48 @@ try
         CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
         KbQueueFlush(activeKeyboardID);
         
-        % Draw Stimulus for stimFlipDurSecs
-        Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);        
-        [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
-            = Screen('Flip', window, vbl + 0.5*ifi);
-        TimingInfo.stimPresFlip{tt}=flip;
-        trialTime = GetSecs;
-        vbl = flip.VBLTimestamp;
+        % cycles
+        for ii =1:PresParams.nCycles
+            % Draw Stimulus for stimFlipDurSecs
+            Screen('DrawTexture', window, imgTextures{tt}, [], [], 0);
+            if ii==1
+                Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
+                [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
+                = Screen('Flip', window, vbl + 0.5*ifi);                            
+                trialTime = GetSecs;
+            end
+            if tacs_er.EncOddBallTrials(ii) && oddBallCycle(tt)==ii
+                Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, cueColors(tt,:), [0 0], 2);
+                [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
+                = Screen('Flip', window, vbl + stimFlipDurSecs);            
+            else
+                Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
+                [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
+                = Screen('Flip', window, vbl + stimFlipDurSecs);            
+            end
+            TimingInfo.stimPresFlip{tt,ii}=flip;          
+            vbl = flip.VBLTimestamp;
+
+            Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
+            [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
+                = Screen('Flip', window, vbl + stimFlipDurSecs);
+          
+        end
+        [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
+        if pressed & tacs_er.EncOddBallTrials(ii)
+            TimingInfo.trialKeyPress{tt} = KbName(firstPress);
+            TimingInfo.trialRT(tt) = firstPress(find(firstPress,1))-trialTime;            
+        end  
         
-        % Draw Post-Stim Noise
-        Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
+        % Draw Post-Stim Blank        
         [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
             = Screen('Flip', window, vbl + stimFlipDurSecs);
-        
         TimingInfo.postStimMaskFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
-        
-        % Re-draw noise mask until response or until max resp time
-        for ii = 1:(MaxRespFrames-1)
-            [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-            
-            if pressed
-                TimingInfo.trialKeyPress{tt} = KbName(firstPress);
-                TimingInfo.trialRT(tt) = firstPress(find(firstPress,1))-trialTime;
-                break
-            end
-            Screen('DrawTexture', window, noiseTextures{randi(PresParams.Nmasks)}, [], [], 0);
+        for ii = 1:(postStimFrames-1)            
             vbl  = Screen('Flip', window,vbl + 0.5*ifi);
         end
-        
-        % if no response.
-        if ~pressed
-            TimingInfo.trialRT(tt) = nan;
-        end
-        KbQueueFlush(activeKeyboardID);
-        
+
         % save every PresParams.SaveEvNtrials
         if mod(tt,PresParams.SaveEvNtrials)==0
             tempName = sprintf('/tacs_er.s%i.encoding.%s.mat;', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
