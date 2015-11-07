@@ -1,10 +1,9 @@
 
-function [tacs_er] = tACS_ER_makelist_Oddball(thePath)
+function [tacs_er] = tACS_ER_makelist_SemanticDesc(thePath)
 % make lists for tacs encoding & retrieval (tacs_er) experiment
 % This design:
-% 1) oddball conditions at 20% rate (throw-out trials)
-% 2) responses are made to the color of the oddball, which can happen at any time during the 
-%    stimulus presentation
+% 1) One encoding block with flashing stimuli.
+% 2) Responses will be made to the stimulus itself, no cue conditions.
 %
 % Important variables
 % subjNum       -> subject  ID
@@ -14,7 +13,6 @@ function [tacs_er] = tACS_ER_makelist_Oddball(thePath)
 % nEncTrials    -> # of TOTAL trials (should be multiple of nEncStim)
 % nEncCond      -> # of conditions at encoding (that are critical for retrieval)
 % nEncBlocks    -> # of encoding blocks
-% nEncOddBalls  -> # of encoding oddballs
 %
 % nRetTrials    -> # of TOTAL retrieval trials
 % nFoilTrials   -> # of NEW trials (foils)
@@ -32,10 +30,6 @@ function [tacs_er] = tACS_ER_makelist_Oddball(thePath)
 % EncStimNames      -> VECTOR trial stimulus ID
 % EncStimUniqueIDs  -> VECTOR trial with unique ID for each stim
 % EncBlockID        -> VECTOR trial block ID
-% EncOddBallTrials  -> VECTOR trial (BOOL) for trials that have an oddball
-% EncOddBallConds   -> VECTOR trial indicating the condition for the oddball (color/location)
-% (NaNs for trials not having an oddball).
-
 % 
 % RetCondIDs        -> {'OldFace','OldScene','NewFace','NewScene'};
 % RetCondTrialCode  -> VECTOR trial 1:4, indicating RetCondID
@@ -46,8 +40,8 @@ function [tacs_er] = tACS_ER_makelist_Oddball(thePath)
 
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
-% Created:      Nov 3th, 2015
-% LastUpdate:   Nov 3th, 2015
+% Created:      Nov 5th, 2015
+% LastUpdate:   Nov 5th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -59,13 +53,12 @@ nEncStim    = nUniqueSceneStimuli+ nUniqueFaceStimuli;
 nEncPhases = 6;
 nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
 EncPhases  = 0:(360/nEncPhases):359;
-nOddBalls  = nEncStim*0.20; % one per unique stim
 
 switch thePath.exptType
-    case 'behav_v9'
+    case 'behav_v10'
         stimSize        = [300 300];
         nEncBlocks      = 1;
-        nOddBallConds   = 2;
+        nOddBallConds   = 1;
 end
 
 nEncTrials = nEncBlocks*nEncStim;
@@ -146,10 +139,6 @@ EncStimType = zeros(nEncTrials,1);
 EncBlockID  = zeros(nEncTrials,1);
 EncStimNames = cell(nEncTrials,1);
 nEncTrialsBlock = nEncTrials/nEncBlocks;
-nOddBallsBlock  = nOddBalls/nEncBlocks;
-nOddBallsBlockConds = nOddBallsBlock/nOddBallConds; % # OB per location per block (60 in current design)
-OddBallTrials   = false(nEncTrials,1);
-OddBallConds     = nan(nEncTrials,1);
 nFacesEncBlock  = nEncTrialsBlock/2;
 nScenesEncBlock = nFacesEncBlock;
 
@@ -177,33 +166,8 @@ for bb = 1:nEncBlocks
     
     EncStimNames(FaceTrials)  = EncFaces(FaceBlockUniqueID);
     EncStimNames(SceneTrials) = EncScenes(ScnBlockUniqueID);
-    
-    %select stims for odd balls and keep track of the ones by block
-    if bb==1
-        % all are available in the first block
-        availableFaceIDs  = EncStimUniqueIDs(FaceTrials);
-        availableSceneIDs = EncStimUniqueIDs(SceneTrials);
-    end
-    oddballFaceIDs = datasample(availableFaceIDs,nOddBallsBlock/2,'replace',false);
-    oddballScnIDS  = datasample(availableSceneIDs,nOddBallsBlock/2,'replace',false);
-    
-    OddBallTrials(TrialBlockID) = ismember(EncStimUniqueIDs(TrialBlockID,2),oddballFaceIDs) | ...
-        ismember(EncStimUniqueIDs(TrialBlockID,2),oddballScnIDS);
-    
-    availableFaceIDs    = setdiff(availableFaceIDs,oddballFaceIDs);
-    availableSceneIDs   = setdiff(availableSceneIDs,oddballScnIDS);
-    
-    % assign locations for oddballs
-    x = find(OddBallTrials(TrialBlockID));
-    for ll = 1:nOddBallConds
-        y = datasample(x,nOddBallsBlockConds,'replace',false);
-        OddBallConds(TrialBlockID(y)) = ll;
-        x = setdiff(x,y);
-    end
-end
 
-assert(sum(histc(OddBallConds,1:nOddBallConds)==nOddBallsBlock/nOddBallConds)==nOddBallConds,'uneven oddball!')
-assert(sum(OddBallTrials)==nOddBalls,'oddball numbers do not match!!')
+end
 
 %% assign encoding conditions
 % max 12 condtions for a 2 x 6 design
@@ -315,7 +279,6 @@ tacs_er.nEncConds  = nEncConds;
 tacs_er.nEncPhases = nEncPhases;
 tacs_er.EncPhases  = EncPhases;
 tacs_er.nEncBlocks = nEncBlocks;
-tacs_er.nEncOddBalls = nOddBalls;
 
 tacs_er.stimSize    = stimSize;
 tacs_er.nRetTrials = nRetTrials;
@@ -334,8 +297,6 @@ tacs_er.EncCondCodeIDs  = EncCondCodeIDs;
 tacs_er.EncStimNames    = EncStimNames;
 tacs_er.EncStimUniqueIDs=EncStimUniqueIDs;
 tacs_er.EncBlockID      = EncBlockID;
-tacs_er.EncOddBallTrials = OddBallTrials;
-tacs_er.EncOddBallConds  = OddBallConds;
 
 % retrieval
 tacs_er.RetCondIDs      = RetCondIDs;
@@ -343,7 +304,6 @@ tacs_er.RetCondTrialCode= RetCondTrialCode;
 tacs_er.RetStimNames    = RetStimNames;
 tacs_er.RetBlockID      = RetBlockID;
 tacs_er.nRetCondTrials  = nRetCondTrials;
-
 
 % sanity check: verify that old labels match stimuli
 assert(sum(ismember(tacs_er.RetStimNames,tacs_er.EncStimNames) == ...
