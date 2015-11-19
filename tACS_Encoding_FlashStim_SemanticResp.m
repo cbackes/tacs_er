@@ -11,10 +11,16 @@ function [enc_out,msg]=tACS_Encoding_FlashStim_SemanticResp(thePath)
 %
 % subjects performance on the cue color identification is stored peridiocally.
 %
+% tACS Marker Codes:
+%       1 -> start presentation
+%       2 -> pre stimulus fixation
+%       3 -> face stimuli
+%       4 -> scene stimuli
+%       5 -> end of presentation
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Nov 5th, 2015
-% LastUpdate:   Nov 5th, 2015
+% LastUpdate:   Nov 17th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -37,7 +43,7 @@ end
 % Presentation Parameters
 PresParams = [];
 switch tacs_er.exptType
-    case 'behav_v10'
+    case {'behav_v10','tacs_enc'}
     otherwise
         error('task not supported')
 end
@@ -57,6 +63,7 @@ PresParams.PreStimFixColorStr   = 'WHITE';
 PresParams.lineWidthPix         = 5;      % Set the line width for our fixation cross
 PresParams.SaveEvNtrials        = 50;
 PresParams.PauseEvNtrials       = tacs_er.nEncStim; % after evry block
+PresParams.tACSstim             = 1;
 
 % determine cue response mapping depending on subject number and active
 % Keyboard.
@@ -72,6 +79,48 @@ keypadResponseKeys = keypadResponseKeys(responseMap);
 
 stimNames = tacs_er.EncStimNames;
 nTrials   = numel(stimNames);
+
+% stimulation parameters
+if PresParams.tACSstim
+    PresParams.StarStimIP           = '10.0.0.42';
+    PresParams.StimTemplate         = 'AG-Pz1mA6Hz';
+    PresParams.preStartTime         = 30; % in seconds.
+    
+    addpath(genpath('./scripts/MatNIC_v2.5/MatNIC_v2.5/'))
+    try
+          [ret, status, socket] = MatNICConnect(PresParams.StarStimIP);
+          if ret<0
+              error(status)
+          end
+          [ret,LSLOutlet]=MatNICMarkerConnectLSL('alexLSL');          
+          if ret<0
+              error('could not connect to streaming layer')
+          end
+          ret = MatNICLoadTemplate(PresParams.StimTemplate,socket);
+          if ret<0
+              error('could not load template')
+          end
+
+          [~,status] = MatNICQueryStatus(socket);
+          assert(strcmp(status, 'CODE_STATUS_STIMULATION_READY'),'aborting, stimulation not ready.')
+          
+          [ret,StartImpedances] = MatNICGetImpedance(socket);
+          if ret<0
+              error(' could not obtain impedances');
+          end
+          disp('Initial Impedances');
+          fprintf(StartImpedances);
+          
+          ret = MatNICStartStimulation(socket);
+          if ret<0
+              error('could not start stimulation')
+          end
+    catch msg
+        MatNICAbortStimulation(socket);
+        sca
+        keyboard;
+    end
+end    
 
 %%
 
@@ -167,10 +216,16 @@ try
     topPriorityLevel = MaxPriority(window);
     Priority(topPriorityLevel);    
     
-    % Draw blanck for a bit    
+    if PresParams.tACSstim
+        % start of experiment marker
+        sendMarker(1,LSLOutlet)
+    end
+    
+    % Draw blank for a bit    
     Screen('Flip', window);
     WaitSecs(PresParams.preStartTime);    
     
+   
     % iterate through trials
     for tt = 1:nTrials
         
@@ -183,6 +238,11 @@ try
             = Screen('Flip', window);
         TimingInfo.preStimMaskFlip{tt}=flip;
         vbl = flip.VBLTimestamp;
+                
+        if PresParams.tACSstim
+            % fixation marker
+            sendMarker(2,LSLOutlet)
+        end
         
         for ii=1:(ITIsFrames(tt)-1)
             Screen('DrawLines', window, fixCrossCoords,PresParams.lineWidthPix, PresParams.PreStimFixColor, [0 0], 2);
@@ -209,6 +269,15 @@ try
             % blank screen for stimFlipDurSecs
             vbl  = Screen('Flip', window, vbl + stimFlipDurSecs);
             TimingInfo.stimPresFlip{tt,ii}=flip;
+            
+            if PresParams.tACSstim
+                % stimulus markers
+                if tacs_er.EncStimType==1
+                    sendMarker(3,LSLOutlet)
+                else
+                    sendMarker(4,LSLOutlet)
+                end
+            end
         end
         [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
         if pressed
@@ -246,6 +315,10 @@ try
     % End of Experiment. Store data, and Close.
     %---------------------------------------------------------------------%
     
+    if PresParams.tACSstim
+        % end of experiment marker
+        sendMarker(5,LSLOutlet)
+    end
     % store additional outputs
     % output structure
     enc_out = [];
@@ -280,6 +353,7 @@ try
     
     msg='allGood';
 catch msg
+    MatNICAbortStimulation(socket);
     sca
     keyboard
 end
@@ -350,4 +424,15 @@ if pressed
         WaitTillResumeKey(resumeKey,activeKeyboardID)
     end
 end
+end
+
+%-------------------------------------------------------------------------%
+% sendMarker
+% sends LabStreamLayer markers to NIC on stimulation computer
+%-------------------------------------------------------------------------%
+function sendMarker(marker,LSLOutlet)
+    ret=MatNICMarkerSendLSL(marker,LSLOutlet);
+    if ret<0
+        warning('error sending marker')
+    end
 end

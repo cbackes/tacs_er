@@ -41,7 +41,7 @@ function [tacs_er] = tACS_ER_makelist_SemanticDesc(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Nov 5th, 2015
-% LastUpdate:   Nov 5th, 2015
+% LastUpdate:   Nov 18th, 2015
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -55,10 +55,11 @@ nEncConds  = 2*nEncPhases;     % faces/scenes x phase (6 different phases)
 EncPhases  = 0:(360/nEncPhases):359;
 
 switch thePath.exptType
-    case 'behav_v10'
+    case {'behav_v10','tacs_enc'}
         stimSize        = [300 300];
-        nEncBlocks      = 1;
-        nOddBallConds   = 1;
+        nEncBlocks      = 1;        
+    otherwise
+        error('incorrect expt!')
 end
 
 nEncTrials = nEncBlocks*nEncStim;
