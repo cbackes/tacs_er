@@ -1,5 +1,5 @@
 
-function [ret_out,msg]=tACS_RetrievalMain(thePath)
+%function [ret_out,msg]=tACS_RetrievalMain(thePath)
 % tACS experiment image recognition memory presentation script
 % This script takes the 'tacs_er' structure that contains the stimuli and
 % order that shall be used at retrieval. These images are then loaded and
@@ -11,8 +11,7 @@ function [ret_out,msg]=tACS_RetrievalMain(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Aug 20th, 2015
-% LastUpdate:   Oct 12, 2015
-% TO DO :       (1)EEG markers
+% LastUpdate:   Nov 18, 2015
 %------------------------------------------------------------------------%
 
 % clear all the screens
@@ -44,6 +43,10 @@ PresParams.ConfidenceScale      = 0; % confidence scale flag
 PresParams.UnsureButtonOpt      = 0;
 PresParams.ConfBarColor         = [0.2 0.1385 1];
 
+if  strcmp(thePath.exptType,'tacs_enc')
+    PresParams.StarStimEEG      = 1;
+end
+
 % determine numbers for recognition decision
 % depending on subject number and active Keyboard.
 laptopResponseKeys = ['j','k','l'];
@@ -64,6 +67,36 @@ PresParams.RespConds = RespConds;
 stimNames = tacs_er.RetStimNames;
 nTrials   = numel(stimNames);
 
+
+% EEG recording parameters
+if PresParams.StarStimEEG
+    PresParams.StarStimIP           = '10.0.0.42';
+    PresParams.preStartTime         = 20; % in seconds.
+    
+    addpath(genpath('../MatNIC_v2.5/'))
+    try
+        [ret, status, socket] = MatNICConnect(PresParams.StarStimIP);
+        if ret<0
+            error(status)
+        end
+        [ret,LSLOutlet]=MatNICMarkerConnectLSL('alexLSL');
+        if ret<0
+            error('could not connect to streaming layer')
+        end
+        [ret] = MatNICStartEEG (['s' num2str(thePath.subjNum)], true, false, socket);
+        if ret<0
+            error('could not start eeg')
+        end
+        
+        %         [~,status] = MatNICQueryStatus(socket);
+        %         assert(strcmp(status, 'CODE_STATUS_EEG_ON'),'aborting, EEG not ready.')
+    catch msg
+        MatNICMarkerCloseLSL(LSLOutlet);
+        MatNICStopEEG(socket);
+        sca
+        keyboard;
+    end
+end
 %%
 
 % Initialize trial timing structure
@@ -124,6 +157,7 @@ try
         Screen('Flip',window);
     end
     
+    %if PresParams.ConfidenceScale
     % Get coordindates for confidence bar
     [ConfidenceBarCoords] = ConfBarParams(xCenter, yCenter,screenXpixels,screenYpixels);
     RightExtent = max(ConfidenceBarCoords(1,:));
@@ -131,7 +165,7 @@ try
     TopExtent   = max(ConfidenceBarCoords(2,:));
     BottomExtent= min(ConfidenceBarCoords(2,:));
     CenterYpos  = ConfidenceBarCoords(2,1);
-    
+    %end
     %---------------------------------------------------------------------%
     % Participant Instructions
     %---------------------------------------------------------------------%
@@ -213,6 +247,14 @@ try
     topPriorityLevel = MaxPriority(window);
     Priority(topPriorityLevel);
     
+    if PresParams.StarStimEEG
+        % start of experiment marker
+        sendMarker(9,LSLOutlet)
+    end
+    
+    % Draw blank for a bit
+    Screen('Flip', window);
+    WaitSecs(PresParams.preStartTime);
     % iterate through trials
     for tt = 1:nTrials
         
@@ -244,6 +286,11 @@ try
         trialTime = GetSecs;
         vbl = flip.VBLTimestamp;
         
+        if PresParams.StarStimEEG
+            % true retrieval condition codes marker
+            sendMarker(tacs_er.RetCondTrialCode(tt),LSLOutlet)
+        end
+        
         % Wait for Response
         [secs,key]=KbQueueWait2(activeKeyboardID,PresParams.stimDurationInSecs-2*ifi);
         if secs<inf && numel(key)==1
@@ -268,8 +315,16 @@ try
                 switch key
                     case PresParams.RespButtons(1)
                         TimingInfo.CondResp{tt} = RespConds{1};
+                        if PresParams.StarStimEEG
+                            % old response marker
+                            sendMarker(5,LSLOutlet)
+                        end
                     case PresParams.RespButtons(3)
                         TimingInfo.CondResp{tt} = RespConds{3};
+                        if PresParams.StarStimEEG
+                            % new response marker
+                            sendMarker(6,LSLOutlet)
+                        end
                     otherwise
                         TimingInfo.CondResp{tt} = 'wrongkey';
                         DrawFormattedText(window, WrongKeyText, 'center' , 'center');
@@ -334,6 +389,10 @@ try
             else
                 DrawFormattedText(window, [' Confidence for ' TimingInfo.CondResp{tt} '?'], 'center' , TopExtent-0.1*screenYpixels, PresParams.textColor);
                 vbl=Screen('Flip', window, vbl + 0.5* ifi);
+                if PresParams.StarStimEEG
+                    % confidence probe
+                    sendMarker(7,LSLOutlet)
+                end
                 % Wait for Response
                 [secs,key]=KbQueueWait2(activeKeyboardID,PresParams.MaxConfDecInSecs-2*ifi);
                 if secs<inf && numel(key)==1
@@ -376,6 +435,12 @@ try
     tacs_er.Stimuli = []; % don't re-store stimuli
     ret_out.expInfo     = tacs_er;
     ret_out.TimingInfo  = TimingInfo;
+    if PresParams.StarStimEEG
+        % end of experiment
+        sendMarker(10,LSLOutlet)
+        MatNICMarkerCloseLSL(LSLOutlet);
+        MatNICStopEEG(socket);
+    end
     
     % save
     fileName = 'tacs_er.test.mat';
@@ -403,6 +468,8 @@ try
     
     msg='allGood';
 catch msg
+    MatNICMarkerCloseLSL(LSLOutlet);
+    MatNICStopEEG(socket);
     sca
     ShowCursor
     keyboard
@@ -414,93 +481,93 @@ sca;
 Screen('CloseAll');
 ShowCursor;
 
-end
+%end
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % auxiliary functions and definitions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%-------------------------------------------------------------------------%
-% fixCrossCoords
-% Set Fixation Cross Coordinates
-%-------------------------------------------------------------------------%
-function fixCrossCoords = fixCross(xCenter, yCenter,screenXpixels,screenYpixels)
+% %-------------------------------------------------------------------------%
+% % fixCrossCoords
+% % Set Fixation Cross Coordinates
+% %-------------------------------------------------------------------------%
+% function fixCrossCoords = fixCross(xCenter, yCenter,screenXpixels,screenYpixels)
+%
+% fixCrossXlength = max(0.02*screenXpixels,0.02*screenYpixels); % max of 2% screen dims
+% fixCrossYlength = fixCrossXlength;
+%
+% LeftExtent  = xCenter-fixCrossXlength/2;
+% RightExtent = xCenter+fixCrossXlength/2 ;
+% BottomExtent = yCenter+fixCrossYlength/2 ;
+% TopExtent   =  yCenter- fixCrossYlength/2 ;
+%
+% fixCrossXCoords   = [LeftExtent RightExtent; yCenter yCenter];
+% fixCrossYCoords   = [xCenter xCenter; BottomExtent TopExtent];
+%
+% fixCrossCoords       = [fixCrossXCoords fixCrossYCoords];
+%
+% end
+%
+% %-------------------------------------------------------------------------%
+% % WaitTillResumeKey
+% % Wait until Resume Key is pressed on the keyboard
+% %-------------------------------------------------------------------------%
+% function WaitTillResumeKey(resumeKey,activeKeyboardID)
+%
+% KbQueueFlush(activeKeyboardID);
+% while 1
+%     [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
+%     if pressed
+%         if strcmp(resumeKey,KbName(firstPress));
+%             break
+%         end
+%     end
+%     WaitSecs(0.1);
+% end
+% KbQueueFlush(activeKeyboardID);
+% end
 
-fixCrossXlength = max(0.02*screenXpixels,0.02*screenYpixels); % max of 2% screen dims
-fixCrossYlength = fixCrossXlength;
-
-LeftExtent  = xCenter-fixCrossXlength/2;
-RightExtent = xCenter+fixCrossXlength/2 ;
-BottomExtent = yCenter+fixCrossYlength/2 ;
-TopExtent   =  yCenter- fixCrossYlength/2 ;
-
-fixCrossXCoords   = [LeftExtent RightExtent; yCenter yCenter];
-fixCrossYCoords   = [xCenter xCenter; BottomExtent TopExtent];
-
-fixCrossCoords       = [fixCrossXCoords fixCrossYCoords];
-
-end
-
-%-------------------------------------------------------------------------%
-% WaitTillResumeKey
-% Wait until Resume Key is pressed on the keyboard
-%-------------------------------------------------------------------------%
-function WaitTillResumeKey(resumeKey,activeKeyboardID)
-
-KbQueueFlush(activeKeyboardID);
-while 1
-    [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-    if pressed
-        if strcmp(resumeKey,KbName(firstPress));
-            break
-        end
-    end
-    WaitSecs(0.1);
-end
-KbQueueFlush(activeKeyboardID);
-end
-
-%-------------------------------------------------------------------------%
-% CheckForPauseKey
-% Check if the resume key has been pressed, and pause exection until resume
-% key is pressed.
-%-------------------------------------------------------------------------%
-function CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
-
-[pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-if pressed
-    if strcmp(pauseKey,KbName(firstPress));
-        WaitTillResumeKey(resumeKey,activeKeyboardID)
-    end
-end
-end
-
-%-------------------------------------------------------------------------%
-% ConfBarParams
-% Confidence Bar Coordinates
-%-------------------------------------------------------------------------%
-function [ConfidenceBarCoords] = ConfBarParams(xCenter, yCenter,screenXpixels,screenYpixels)
-
-% Here we set the size of our confidence bar
-BarLength = 0.5*screenXpixels; % 50% of the width screen
-HeightOfBarWhisks = 0.05*screenYpixels; % 5% of the height of screen
-
-LeftExtent  = xCenter-BarLength/2;
-MidLeftExtent = xCenter-BarLength/4;
-RightExtent = xCenter+BarLength/2 ;
-MidRightExtent = xCenter+BarLength/4;
-BottomExtent = yCenter+HeightOfBarWhisks/2 ;
-TopExtent   =  yCenter- HeightOfBarWhisks/2 ;
-
-HorizontalBarCoords   = [LeftExtent RightExtent; yCenter yCenter];
-
-LeftWhisk             = [LeftExtent LeftExtent ; BottomExtent TopExtent];
-RightWhisk            = [RightExtent RightExtent ; BottomExtent TopExtent];
-MidLeftWhisk          = [MidLeftExtent MidLeftExtent ; BottomExtent TopExtent];
-MidRightWhisk         = [MidRightExtent MidRightExtent ; BottomExtent TopExtent];
-CenterWhisk           = [xCenter xCenter ; BottomExtent TopExtent];
-
-ConfidenceBarCoords   = [HorizontalBarCoords LeftWhisk RightWhisk ...
-    MidLeftWhisk MidRightWhisk CenterWhisk];
-end
+% %-------------------------------------------------------------------------%
+% % CheckForPauseKey
+% % Check if the resume key has been pressed, and pause exection until resume
+% % key is pressed.
+% %-------------------------------------------------------------------------%
+% function CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
+%
+% [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
+% if pressed
+%     if strcmp(pauseKey,KbName(firstPress));
+%         WaitTillResumeKey(resumeKey,activeKeyboardID)
+%     end
+% end
+% end
+%
+% %-------------------------------------------------------------------------%
+% % ConfBarParams
+% % Confidence Bar Coordinates
+% %-------------------------------------------------------------------------%
+% function [ConfidenceBarCoords] = ConfBarParams(xCenter, yCenter,screenXpixels,screenYpixels)
+%
+% % Here we set the size of our confidence bar
+% BarLength = 0.5*screenXpixels; % 50% of the width screen
+% HeightOfBarWhisks = 0.05*screenYpixels; % 5% of the height of screen
+%
+% LeftExtent  = xCenter-BarLength/2;
+% MidLeftExtent = xCenter-BarLength/4;
+% RightExtent = xCenter+BarLength/2 ;
+% MidRightExtent = xCenter+BarLength/4;
+% BottomExtent = yCenter+HeightOfBarWhisks/2 ;
+% TopExtent   =  yCenter- HeightOfBarWhisks/2 ;
+%
+% HorizontalBarCoords   = [LeftExtent RightExtent; yCenter yCenter];
+%
+% LeftWhisk             = [LeftExtent LeftExtent ; BottomExtent TopExtent];
+% RightWhisk            = [RightExtent RightExtent ; BottomExtent TopExtent];
+% MidLeftWhisk          = [MidLeftExtent MidLeftExtent ; BottomExtent TopExtent];
+% MidRightWhisk         = [MidRightExtent MidRightExtent ; BottomExtent TopExtent];
+% CenterWhisk           = [xCenter xCenter ; BottomExtent TopExtent];
+%
+% ConfidenceBarCoords   = [HorizontalBarCoords LeftWhisk RightWhisk ...
+%     MidLeftWhisk MidRightWhisk CenterWhisk];
+% end

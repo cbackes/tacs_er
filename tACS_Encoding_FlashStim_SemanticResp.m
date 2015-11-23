@@ -1,4 +1,4 @@
-function [enc_out,msg]=tACS_Encoding_FlashStim_SemanticResp(thePath)
+%function [enc_out,msg]=tACS_Encoding_FlashStim_SemanticResp(thePath)
 % tACS stimulus encoding presentation script.
 %
 % this scripts presents stimuli to be encoded for a time depending on
@@ -43,7 +43,10 @@ end
 % Presentation Parameters
 PresParams = [];
 switch tacs_er.exptType
-    case {'behav_v10','tacs_enc'}
+    case 'behav_v10'
+        PresParams.tACSstim             = 1;
+    case 'tacs_enc'
+        PresParams.tACSstim             = 1;
     otherwise
         error('task not supported')
 end
@@ -63,7 +66,6 @@ PresParams.PreStimFixColorStr   = 'WHITE';
 PresParams.lineWidthPix         = 5;      % Set the line width for our fixation cross
 PresParams.SaveEvNtrials        = 50;
 PresParams.PauseEvNtrials       = tacs_er.nEncStim; % after evry block
-PresParams.tACSstim             = 1;
 
 % determine cue response mapping depending on subject number and active
 % Keyboard.
@@ -83,10 +85,10 @@ nTrials   = numel(stimNames);
 % stimulation parameters
 if PresParams.tACSstim
     PresParams.StarStimIP           = '10.0.0.42';
-    PresParams.StimTemplate         = 'AG-Pz1mA6Hz';
+    PresParams.StimTemplate         = 'AG-tACS-Fz1mA6Hz-FC12AF34Ret';
     PresParams.preStartTime         = 30; % in seconds.
     
-    addpath(genpath('./scripts/MatNIC_v2.5/MatNIC_v2.5/'))
+    addpath(genpath('../MatNIC_v2.5/'))
     try
           [ret, status, socket] = MatNICConnect(PresParams.StarStimIP);
           if ret<0
@@ -104,18 +106,20 @@ if PresParams.tACSstim
           [~,status] = MatNICQueryStatus(socket);
           assert(strcmp(status, 'CODE_STATUS_STIMULATION_READY'),'aborting, stimulation not ready.')
           
-          [ret,StartImpedances] = MatNICGetImpedance(socket);
-          if ret<0
-              error(' could not obtain impedances');
-          end
-          disp('Initial Impedances');
-          fprintf(StartImpedances);
+          % only works during stimulation
+%           [ret,StartImpedances] = MatNICGetImpedance(socket);
+%           if ret<0
+%               error(' could not obtain impedances');
+%           end
+%           disp('Initial Impedances');
+%           fprintf(StartImpedances);
           
           ret = MatNICStartStimulation(socket);
           if ret<0
               error('could not start stimulation')
           end
     catch msg
+        MatNICMarkerCloseLSL(LSLOutlet);
         MatNICAbortStimulation(socket);
         sca
         keyboard;
@@ -196,7 +200,7 @@ try
         'If no questions, \n'...
         'Press ''' resumeKey ''' key to begin the experiment.'];
     
-    PauseStr = ['Rest Pause. \\ '...
+    PauseStr = ['Rest Pause. \n\n '...
         'To continue press the ''' resumeKey ''' key.' ];
     
     DrawFormattedText(window,InstStr, 'wrapat', 'center', 255, 75, [],[],[],[],[xCenter*0.1,0,screenXpixels*0.8,screenYpixels]);
@@ -272,7 +276,7 @@ try
             
             if PresParams.tACSstim
                 % stimulus markers
-                if tacs_er.EncStimType==1
+                if tacs_er.EncStimType(tt)==1
                     sendMarker(3,LSLOutlet)
                 else
                     sendMarker(4,LSLOutlet)
@@ -314,10 +318,13 @@ try
     %---------------------------------------------------------------------%
     % End of Experiment. Store data, and Close.
     %---------------------------------------------------------------------%
-    
+    Screen('Flip',window);
+
     if PresParams.tACSstim
         % end of experiment marker
         sendMarker(5,LSLOutlet)
+        MatNICMarkerCloseLSL(LSLOutlet);
+        MatNICAbortStimulation(socket);
     end
     % store additional outputs
     % output structure
@@ -339,7 +346,7 @@ try
             cnt = cnt+1;
             warning(strcat(fileName,' already existed.'))
             fileName = strcat('tacs_er.encoding','-',num2str(cnt),'.mat');
-            warning(strcat('saving as ', filenName))
+            warning(strcat('saving as ', fileName))
         end
     end
     
@@ -354,6 +361,7 @@ try
     msg='allGood';
 catch msg
     MatNICAbortStimulation(socket);
+    MatNICMarkerCloseLSL(LSLOutlet);
     sca
     keyboard
 end
@@ -364,75 +372,75 @@ sca;
 KbQueueStop(activeKeyboardID);
 Screen('CloseAll');
 ShowCursor;
-end
+
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % auxiliary functions and definitions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% % %-------------------------------------------------------------------------%
+% % fixCrossCoords
+% % Set Fixation Cross Coordinates
 % %-------------------------------------------------------------------------%
-% fixCrossCoords
-% Set Fixation Cross Coordinates
-%-------------------------------------------------------------------------%
-function fixCrossCoords = fixCross(xCenter, yCenter,screenXpixels,screenYpixels)
+% function fixCrossCoords = fixCross(xCenter, yCenter,screenXpixels,screenYpixels)
+% 
+% fixCrossXlength = max(0.02*screenXpixels,0.02*screenYpixels); % max of 2% screen dims
+% fixCrossYlength = fixCrossXlength;
+% 
+% LeftExtent  = xCenter-fixCrossXlength/2;
+% RightExtent = xCenter+fixCrossXlength/2 ;
+% BottomExtent = yCenter+fixCrossYlength/2 ;
+% TopExtent   =  yCenter- fixCrossYlength/2 ;
+% 
+% fixCrossXCoords   = [LeftExtent RightExtent; yCenter yCenter];
+% fixCrossYCoords   = [xCenter xCenter; BottomExtent TopExtent];
+% 
+% fixCrossCoords       = [fixCrossXCoords fixCrossYCoords];
+% 
+% end
 
-fixCrossXlength = max(0.02*screenXpixels,0.02*screenYpixels); % max of 2% screen dims
-fixCrossYlength = fixCrossXlength;
+% %-------------------------------------------------------------------------%
+% % WaitTillResumeKey
+% % Wait until Resume Key is pressed on the keyboard
+% %-------------------------------------------------------------------------%
+% function WaitTillResumeKey(resumeKey,activeKeyboardID)
+% 
+% KbQueueFlush(activeKeyboardID);
+% while 1
+%     [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
+%     if pressed
+%         if strcmp(resumeKey,KbName(firstPress));
+%             break
+%         end
+%     end
+%     WaitSecs(0.1);
+% end
+% KbQueueFlush(activeKeyboardID);
+% end
 
-LeftExtent  = xCenter-fixCrossXlength/2;
-RightExtent = xCenter+fixCrossXlength/2 ;
-BottomExtent = yCenter+fixCrossYlength/2 ;
-TopExtent   =  yCenter- fixCrossYlength/2 ;
+% %-------------------------------------------------------------------------%
+% % CheckForPauseKey
+% % Check if the resume key has been pressed, and pause exection until resume
+% % key is pressed.
+% %-------------------------------------------------------------------------%
+% function CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
+% 
+% [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
+% if pressed
+%     if strcmp(pauseKey,KbName(firstPress));
+%         WaitTillResumeKey(resumeKey,activeKeyboardID)
+%     end
+% end
+% end
 
-fixCrossXCoords   = [LeftExtent RightExtent; yCenter yCenter];
-fixCrossYCoords   = [xCenter xCenter; BottomExtent TopExtent];
-
-fixCrossCoords       = [fixCrossXCoords fixCrossYCoords];
-
-end
-
-%-------------------------------------------------------------------------%
-% WaitTillResumeKey
-% Wait until Resume Key is pressed on the keyboard
-%-------------------------------------------------------------------------%
-function WaitTillResumeKey(resumeKey,activeKeyboardID)
-
-KbQueueFlush(activeKeyboardID);
-while 1
-    [pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-    if pressed
-        if strcmp(resumeKey,KbName(firstPress));
-            break
-        end
-    end
-    WaitSecs(0.1);
-end
-KbQueueFlush(activeKeyboardID);
-end
-
-%-------------------------------------------------------------------------%
-% CheckForPauseKey
-% Check if the resume key has been pressed, and pause exection until resume
-% key is pressed.
-%-------------------------------------------------------------------------%
-function CheckForPauseKey(pauseKey,resumeKey,activeKeyboardID)
-
-[pressed,firstPress] = KbQueueCheck(activeKeyboardID);
-if pressed
-    if strcmp(pauseKey,KbName(firstPress));
-        WaitTillResumeKey(resumeKey,activeKeyboardID)
-    end
-end
-end
-
-%-------------------------------------------------------------------------%
-% sendMarker
-% sends LabStreamLayer markers to NIC on stimulation computer
-%-------------------------------------------------------------------------%
-function sendMarker(marker,LSLOutlet)
-    ret=MatNICMarkerSendLSL(marker,LSLOutlet);
-    if ret<0
-        warning('error sending marker')
-    end
-end
+% %-------------------------------------------------------------------------%
+% % sendMarker
+% % sends LabStreamLayer markers to NIC on stimulation computer
+% %-------------------------------------------------------------------------%
+% function sendMarker(marker,LSLOutlet)
+%     ret=MatNICMarkerSendLSL(marker,LSLOutlet);
+%     if ret<0
+%         warning('error sending marker')
+%     end
+% end
