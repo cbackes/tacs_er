@@ -31,9 +31,7 @@ end
 % Presentation Parameters
 PresParams  = [];
 PresParams.stimDurationInSecs   = 3;
-PresParams.ITI_Range            = [1.5 2]; % variable ITI in secs
-PresParams.MaxResponseTime      = 3;       % maximum to make recognition decision
-PresParams.MaxConfDecInSecs     = 5; % max time to make confidene decision
+PresParams.ITI_Range            = [1 1.5]; % variable ITI in secs
 PresParams.SaveEvNtrials        = 20; % save progress every X# of trials.
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
 PresParams.dotColor             = [1 1 1];
@@ -42,9 +40,15 @@ PresParams.textColor            = [1 1 1];
 PresParams.ConfidenceScale      = 0; % confidence scale flag
 PresParams.UnsureButtonOpt      = 0;
 PresParams.ConfBarColor         = [0.2 0.1385 1];
+PresParams.SelfPaceFlag         = 0;
+
+PresParams.preStartTime         = 10;
+PresParams.MaxResponseTime      = 3;       % maximum to make recognition decision
+PresParams.MaxConfDecInSecs     = 3;       % max time to make confidence decision
+PresParams.TotalTrialDur        = 5;       %
 
 if  strcmp(thePath.exptType,'tacs_enc')
-    PresParams.StarStimEEG      = 1;
+    PresParams.StarStimEEG      = 0;
 end
 
 % determine numbers for recognition decision
@@ -103,6 +107,7 @@ end
 TimingInfo = [];
 TimingInfo.preStimFixFlip   = cell(nTrials,1);
 TimingInfo.stimPresFlip     = cell(nTrials,1);
+TimingInfo.postStimFlip     = cell(nTrials,1);
 TimingInfo.trialRT          = nan(nTrials,1);
 TimingInfo.trialKeyPress    = cell(nTrials,1);
 TimingInfo.CondResp         = cell(nTrials,1);
@@ -147,7 +152,7 @@ try
     
     % post-stim max confidence response period duration
     MaxConfDescFrames  = round(PresParams.MaxConfDecInSecs /ifi);
-    
+
     % pre-make image textures
     imgTextures = cell(nTrials,1);
     for ii = 1:nTrials
@@ -200,13 +205,15 @@ try
         InstString = ['Instructions\n\n' ...
             'You will be presented with images that you might recognized from the previous experiment. '...
             'Your task is to indentify which images were presented before and which ones are new '...
-            'by pressing a button. For ' RespConds{1} ' images you will be pressing the '...
-            PresParams.RespButtons(1) ' key, for ' RespConds{3} ' images you will press the '...
-            PresParams.RespButtons(3) ' key. You will have ' num2str(PresParams.MaxResponseTime) ...
-            ' seconds to respond, and please do so as quickly and as accurately as possible. '...
+            'by pressing a button. \n'...
+            'For ' RespConds{1} ' images you press the ''' PresParams.RespButtons(1) ''' key\n'...
+            'for ' RespConds{3} ' images you press the ''' PresParams.RespButtons(3) ''' key\n\n' ...
             'After making the old/new judgment on the image, you will also be indicating your '...
-            'confidence by pressing ' PresParams.RespButtons(1) ', ' PresParams.RespButtons(2) ' and ' ...
-            PresParams.RespButtons(3) ' for low, medium and high confidence, respectively. \n\n'...
+            'confidence by pressing:\n'...
+            '''' PresParams.RespButtons(1) ''' press for low confidence \n'...
+            '''' PresParams.RespButtons(2) ''' press for mid confidence \n'...
+            '''' PresParams.RespButtons(3) ''' press for high confidence \n\n'...
+            'Please make your responses as quickly and as accurate as possible.\n'...
             'If there are no questions, \n'...'
             'Press ''' resumeKey ''' to begin the experiment.'];
     end
@@ -255,6 +262,7 @@ try
     % Draw blank for a bit
     Screen('Flip', window);
     WaitSecs(PresParams.preStartTime);
+    
     % iterate through trials
     for tt = 1:nTrials
         
@@ -308,7 +316,7 @@ try
                     otherwise
                         TimingInfo.CondResp{tt} = 'wrongkey';
                         DrawFormattedText(window, WrongKeyText, 'center' , 'center');
-                        Screen('Flip', window, vbl + 0.5*ifi);
+                        vbl=Screen('Flip', window, vbl + 0.5*ifi);
                         WaitTillResumeKey(resumeKey,activeKeyboardID)
                 end
             else
@@ -328,13 +336,13 @@ try
                     otherwise
                         TimingInfo.CondResp{tt} = 'wrongkey';
                         DrawFormattedText(window, WrongKeyText, 'center' , 'center');
-                        Screen('Flip', window, vbl + 0.5*ifi);
+                        vbl=Screen('Flip', window, vbl + 0.5*ifi);
                         WaitTillResumeKey(resumeKey,activeKeyboardID)
                 end
             end
         else
             DrawFormattedText(window,NoRespText, 'center' , 'center');
-            Screen('Flip', window, vbl + 0.5*ifi);
+            vbl=Screen('Flip', window, vbl + 0.5*ifi);
             WaitSecs(1);
         end
         
@@ -355,13 +363,13 @@ try
                     
                     % draw dot indicating position of mouse
                     if mx>= RightExtent
-                        Screen('DrawDots', window, [RightExtent CenterYpos], 15, PresParams.dotColor, [], 2);
+                        vbl=Screen('DrawDots', window, [RightExtent CenterYpos], 15, PresParams.dotColor, [], 2);
                         mx = RightExtent;
                     elseif mx<= LeftExtent
-                        Screen('DrawDots', window, [LeftExtent CenterYpos], 15, PresParams.dotColor, [], 2);
+                        vbl=Screen('DrawDots', window, [LeftExtent CenterYpos], 15, PresParams.dotColor, [], 2);
                         mx = LeftExtent;
                     else
-                        Screen('DrawDots', window, [mx CenterYpos], 15, PresParams.dotColor, [], 2);
+                        vbl=Screen('DrawDots', window, [mx CenterYpos], 15, PresParams.dotColor, [], 2);
                     end
                     
                     % If there was a click, record. else continue to draw
@@ -373,7 +381,7 @@ try
                         buttonPress = sprintf('Response: %.2g',Pct);
                         DrawFormattedText(window,buttonPress,'center', BottomExtent+100, PresParams.textColor);
                         HideCursor();
-                        Screen('Flip', window, vbl + 0.5* ifi);
+                        vbl=Screen('Flip', window, vbl + 0.5* ifi);
                         SetMouse(xCenter,CenterYpos,window);
                         WaitSecs(0.5);
                         break
@@ -383,7 +391,7 @@ try
                 end
                 if ~confResp
                     DrawFormattedText(window,NoRespText, 'center' , 'center');
-                    Screen('Flip', window, vbl + 0.5*ifi);
+                    vbl=Screen('Flip', window, vbl + 0.5*ifi);
                     WaitSecs(1);
                 end
             else
@@ -406,7 +414,7 @@ try
                         otherwise
                             TimingInfo.ConfResp{tt} = 'wrongkey';
                             DrawFormattedText(window, WrongConfKeyText, 'center' , 'center');
-                            Screen('Flip', window, vbl + 0.5*ifi);
+                            vbl=Screen('Flip', window, vbl + 0.5*ifi);
                             WaitTillResumeKey(resumeKey,activeKeyboardID)
                     end
                 else
@@ -416,6 +424,25 @@ try
                 end
             end
         end
+        
+        if ~PresParams.SelfPaceFlag
+            % Draw Post-Stim blank for remainder of trial (and at least one
+            % frame)
+            currentTime = GetSecs;
+            currentTrialDur = currentTime-trialTime;
+            postStimFrames = round((PresParams.TotalTrialDur-(currentTrialDur))/ifi);
+            
+            [flip.VBLTimestamp, flip.StimulusOnsetTime, flip.FlipTimestamp, flip.Missed, flip.Beampos,] ...
+                = Screen('Flip', window, vbl + 0.5*ifi);
+            TimingInfo.postStimFlip{tt}=flip;
+            vbl = flip.VBLTimestamp;
+            if postStimFrames>2
+                for ii = 1:(postStimFrames-1)
+                    vbl  = Screen('Flip', window,vbl + 0.5*ifi);
+                end
+            end
+        end
+        
         % save every PresParams.SaveEvNtrials
         if mod(tt,PresParams.SaveEvNtrials)==0
             tempName = sprintf('/tacs_er.s%i.test.%s.mat', thePath.subjNum, datestr(now,'dd.mm.yyyy.HH.MM'));
@@ -468,8 +495,10 @@ try
     
     msg='allGood';
 catch msg
-    MatNICMarkerCloseLSL(LSLOutlet);
-    MatNICStopEEG(socket);
+    if PresParams.StarStimEEG
+        MatNICMarkerCloseLSL(LSLOutlet);
+        MatNICStopEEG(socket);
+    end
     sca
     ShowCursor
     keyboard
