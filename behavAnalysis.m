@@ -1,39 +1,266 @@
+function behav_out = behavAnalysis(expt,nSubjs)
+% behavioral analysis function for tACS_ER task
+% analyzes both encoding and retrieval data for tacs_enc
+%
+% thePath input determines the experimental folder to load data from
+%
+%------------------------------------------------------------------------%
+% Author:         Alex Gonzalez
+% Created:        Dec 1, 2015
+% LastUpdate:     Dec 8, 2015
+%------------------------------------------------------------------------%
+%
+%
+% encoding task:
+% Perceptual Discrimination
+% 1) Face hit rate
+% 2) Scene hit rate
+% 3) Discrimination rate (accuracy) (stats across subjects)
+% 4) RTs of for Faces and Scenes; (stats across subjects)
+%
+% retrieval task:
+% 1) hit rate, fa rate, cr rate, miss rate
+% 2) hit rate, fa rate, cr rate, miss rate for Faces and Scenes
+% independently
+% 3) RTs
+% 4) Confidence
+%
 
+dataPath = ['~/Google Drive/Research/tACS/tACS_ER_task/data/' expt '/'];
+behav_out     = [];
+behav_out.encSubj = cell(nSubjs,1);
+behav_out.retSubj = cell(nSubjs,1);
 
-mainPath = '~/Google Drive/Research/tACS/tACS_ER_task/data/behav_v10/';
-filename = 'tacs_er.test.mat';
+behav_out.encSummary = [];
+behav_out.encSummary.meanAcc        = nan(nSubjs,1);
+behav_out.encSummary.FaceHR         = nan(nSubjs,1);
+behav_out.encSummary.SceneHR        = nan(nSubjs,1);
+behav_out.encSummary.meanRTs        = nan(nSubjs,1);
+behav_out.encSummary.meanFaceRTs    = nan(nSubjs,1);
+behav_out.encSummary.meanSceneRTs   = nan(nSubjs,1);
+behav_out.encSummary.FaceScene_RTs_TVals = nan(nSubjs,1);
 
-RespTypes = {'old','new','unsure'};
-nSubjs = 1;
-dPFaces = zeros(nSubjs,1);
-dPScns  =  zeros(nSubjs,1);
+behav_out.retSummary =[];
+behav_out.retSummary.dPrime             = nan(nSubjs,1);
+behav_out.retSummary.dPrime_C           = nan(nSubjs,1);
+behav_out.retSummary.Face_dPrime        = nan(nSubjs,1);
+behav_out.retSummary.Face_dPrime_C      = nan(nSubjs,1);
+behav_out.retSummary.Scene_dPrime       = nan(nSubjs,1);
+behav_out.retSummary.Scene_dPrime_C     = nan(nSubjs,1);
+behav_out.retSummary.meanAccuracyByConf = nan(nSubjs,3);
+behav_out.retSummary.meanHitRTs         = nan(nSubjs,1);
+behav_out.retSummary.meanCRsRTs         = nan(nSubjs,1);
+behav_out.retSummary.HitCRs_RTs_TVals   = nan(nSubjs,1);
+for ss = 4:nSubjs
+    try
+        load([dataPath 's' num2str(ss) '/tacs_er.encoding.mat'])
+        behav_out.encSubj{ss} = EncAnalysisBySubj(enc_out);
+        behav_out.encSummary.meanAcc(ss)    = behav_out.encSubj{ss}.meanAccuracy;
+        behav_out.encSummary.FaceHR(ss)     = behav_out.encSubj{ss}.FaceHitRate;
+        behav_out.encSummary.SceneHR(ss)    = behav_out.encSubj{ss}.SceneHitRate;
+        behav_out.encSummary.meanRTs(ss)    = behav_out.encSubj{ss}.RTsStats.meanRT;
+        behav_out.encSummary.meanFaceRTs(ss) = behav_out.encSubj{ss}.FaceRTsStats.meanRT;
+        behav_out.encSummary.meanSceneRTs(ss) = behav_out.encSubj{ss}.SceneRTsStats.meanRT;
+        behav_out.encSummary.FaceScene_RTs_TVals(ss) = behav_out.encSubj{ss}.RTsStats_FvsSc.tstat;
+    catch msg
+    end
+    try
+        load([dataPath 's' num2str(ss) '/tacs_er.test.mat'])
+        behav_out.retSubj{ss} = RetAnalysisBySubj(ret_out);
+        behav_out.retSummary.dPrime(ss)             = behav_out.retSubj{ss}.dPrime;
+        behav_out.retSummary.dPrime_C(ss)           = behav_out.retSubj{ss}.dPrime_C;
+        behav_out.retSummary.Face_dPrime(ss)        = behav_out.retSubj{ss}.Face_dPrime;
+        behav_out.retSummary.Face_dPrime_C(ss)      = behav_out.retSubj{ss}.Face_dPrime_C;
+        behav_out.retSummary.Scene_dPrime(ss)       = behav_out.retSubj{ss}.Scene_dPrime;
+        behav_out.retSummary.Scene_dPrime_C(ss)     = behav_out.retSubj{ss}.Scene_dPrime_C;
+        behav_out.retSummary.meanAccuracyByConf(ss,:) = behav_out.retSubj{ss}.meanAccuracyByConf;
+        behav_out.retSummary.meanHitRTs(ss)          = behav_out.retSubj{ss}.Hit_RTsStats.meanRT;
+        behav_out.retSummary.meanCRsRTs(ss)         = behav_out.retSubj{ss}.CRs_RTsStats.meanRT;
+        behav_out.retSummary.HitCRs_RTs_TVals(ss)   = behav_out.retSubj{ss}.HitCRs_RTs.tstat;
 
-BehavTableMeans = zeros(4,3,nSubjs);
-BehavTableNums =  zeros(4,3,nSubjs);
-
-for kk = 1:nSubjs
-    load([mainPath 's' num2str(kk),'/',filename])   
-    
-    for ii = 1:4
-        for jj = 1:numel(RespTypes)
-            BehavTableNums(ii,jj,kk) = sum(strcmp(ret_out.TimingInfo.CondResp(ret_out.expInfo.RetCondTrialCode==ii),RespTypes{jj}));
-            BehavTableMeans(ii,jj,kk)=mean(strcmp(ret_out.TimingInfo.CondResp(ret_out.expInfo.RetCondTrialCode==ii),RespTypes{jj}));            
-        end
+    catch msg
     end
     
-    nFaceHits  = BehavTableNums(1,1,kk);
-    nFaceMiss = BehavTableNums(1,2,kk);
-    nFaceFA    = BehavTableNums(3,1,kk);
-    nFaceCR    = BehavTableNums(3,2,kk);
-    dPFaces(kk) = calc_dPrime(nFaceHits,nFaceMiss,nFaceFA,nFaceCR);
-    
-    
-    nScnHits  = BehavTableNums(2,1,kk);
-    nScnMiss = BehavTableNums(2,2,kk);
-    nScnFA    = BehavTableNums(4,1,kk);
-    nScnCR    = BehavTableNums(4,2,kk);
-    dPScns(kk) = calc_dPrime(nScnHits,nScnMiss,nScnFA,nScnCR);
-    
-   
 end
-nUnsures=sum(squeeze(BehavTableNums(:,3,:)));
+
+end
+function enc=EncAnalysisBySubj(enc_out)
+enc =[];
+enc.encCond = enc_out.exptInfo.EncStimType; % face/scene trials
+enc.RTs     = enc_out.TimingInfo.trialRT;
+keyPress = enc_out.TimingInfo.trialKeyPress;
+
+cond1Key=enc_out.PresParams.RespToCond1;
+cond2Key=enc_out.PresParams.RespToCond2;
+
+% get simple responses information
+binOut = tabulateBinaryResponses(keyPress,enc.encCond,cond1Key,cond2Key);
+
+enc.CorrectResp     = binOut.Correct;
+enc.InCorrectResp   = binOut.Correct;
+enc.meanAccuracy    = binOut.mACC;
+enc.FaceHitRate     = binOut.Cond1HR;
+enc.SceneHitRate    = binOut.Cond2HR;
+enc.FaceCorrectResp = binOut.Cond1Correct;
+enc.SceneCorrectResp= binOut.Cond2Correct;
+enc.otherEncInfo    = binOut;
+
+% RT info (for correct)
+enc.RTsStats        = analyzeRTs(enc.RTs(enc.CorrectResp));
+enc.FaceRTsStats    = analyzeRTs(enc.RTs(enc.FaceCorrectResp));
+enc.SceneRTsStats   = analyzeRTs(enc.RTs(enc.SceneCorrectResp));
+[~,a1,~,a2] = ttest2(enc.RTs(enc.FaceCorrectResp),enc.RTs(enc.SceneCorrectResp));
+enc.RTsStats_FvsSc.p=a1;
+enc.RTsStats_FvsSc.tstat=a2.tstat;
+
+end
+
+function ret=RetAnalysisBySubj(ret_out)
+
+ret = [];
+ret.retCond     = ret_out.expInfo.RetCondTrialCode;
+% 1 old face, 2 old scene, 3 new face, 4 new scene
+ret.OldTrials   = ret.retCond==1 | ret.retCond==2;
+ret.NewTrials   = ret.retCond==3 | ret.retCond==4;
+ret.FaceTrials  = ret.retCond==1 | ret.retCond==3;
+ret.SceneTrials = ret.retCond==2 | ret.retCond==4;
+
+ret.RTs         = ret_out.TimingInfo.trialRT;
+
+keyPress        = ret_out.TimingInfo.trialKeyPress;
+
+cond1Key=ret_out.PresParams.RespButtons(1);
+cond2Key=ret_out.PresParams.RespButtons(3);
+
+% get overall response information
+binOut = tabulateBinaryResponses(keyPress,1*ret.OldTrials+2*ret.NewTrials,cond1Key,cond2Key);
+
+ret.CorrectResp     = binOut.Correct;
+ret.InCorrectResp   = binOut.InCorrect;
+ret.meanAccuracy    = binOut.mACC;
+
+ret.HitRate         = binOut.Cond1HR;
+ret.CorrRejRate     = binOut.Cond2HR;
+ret.FARate          = binOut.Cond2FAR;
+ret.MissRate        = binOut.Cond1FAR;
+
+ret.Hits            = binOut.Cond1Correct;
+ret.CRs             = binOut.Cond2Correct;
+ret.Misses          = binOut.Cond1InCorrect;
+ret.FA              = binOut.Cond2InCorrect;
+
+[ret.dPrime, ret.dPrime_C] = calc_dPrime(sum(ret.Hits),sum(ret.Misses),sum(ret.FA),sum(ret.CRs));
+
+% RT analyses
+ret.Hit_RTsStats     = analyzeRTs(ret.RTs(ret.Hits));
+ret.CRs_RTsStats     = analyzeRTs(ret.RTs(ret.CRs));
+ret.Misses_RTsStats  = analyzeRTs(ret.RTs(ret.Misses));
+ret.FA_RTsStats      = analyzeRTs(ret.RTs(ret.FA));
+
+[~,a1,~,a2]          = ttest2(ret.RTs(ret.Hits),ret.RTs(ret.CRs));
+ret.HitCRs_RTs.p     = a1;
+ret.HitCRs_RTs.tstat =a2.tstat;
+
+% separated by faces & scenes
+types = {'Face','Scene'};
+for tt = 1:numel(types)
+    type = types{tt};
+    trials = ret.([type 'Trials']);
+    
+    binOut = tabulateBinaryResponses(keyPress(trials),1*ret.OldTrials(trials)+2*ret.NewTrials(trials),cond1Key,cond2Key);
+    
+    ret.([type '_meanACC'])      = binOut.mACC;
+    ret.([type '_HitRate'])      = binOut.Cond1HR;
+    ret.([type '_CorrRejRate'])  = binOut.Cond2HR;
+    ret.([type '_FARate'])       = binOut.Cond2FAR;
+    ret.([type '_MissRate'])     = binOut.Cond1FAR;
+    
+    [ret.([type '_dPrime']), ret.([type '_dPrime_C'])]= calc_dPrime(sum(binOut.Cond1Correct),....
+        sum(binOut.Cond1InCorrect),sum(binOut.Cond2InCorrect),sum(binOut.Cond2Correct));
+    
+    % RT analyses
+    ret.([type '_Hit_RTsStats'])     = analyzeRTs(ret.RTs(ret.Hits & trials));
+    ret.([type '_CRs_RTsStats'])     = analyzeRTs(ret.RTs(ret.CRs & trials));
+    ret.([type '_Misses_RTsStats'])  = analyzeRTs(ret.RTs(ret.Misses & trials));
+    ret.([type '_FA_RTsStats'])      = analyzeRTs(ret.RTs(ret.FA & trials));
+end
+
+% Confidence
+ret.ConfidenceResp = ret_out.TimingInfo.ConfResp;
+ret.Confidence     = 3*strcmp(ret.ConfidenceResp,'high')+ ...
+    2*strcmp(ret.ConfidenceResp,'mid')+1*strcmp(ret.ConfidenceResp,'low');
+ret.nRespByConf    = histc(ret.Confidence,1:3);
+
+% Tabulate Hits, FA, CRs and Misses as a function of confidence
+for cc = 1:3
+    % get overall response information
+    binOut = tabulateBinaryResponses(keyPress(ret.Confidence==cc),...
+        1*ret.OldTrials(ret.Confidence==cc)+2*ret.NewTrials(ret.Confidence==cc)...
+        ,cond1Key,cond2Key);
+        
+    ret.meanAccuracyByConf(cc)    = binOut.mACC;
+    
+    ret.HitRateByConf(cc)         = binOut.Cond1HR;
+    ret.CorrRejRateByConf(cc)     = binOut.Cond2HR;
+    ret.FARateByConf(cc)          = binOut.Cond2FAR;
+    ret.MissRateByConf(cc)        = binOut.Cond1FAR;
+        
+end
+
+
+
+end
+
+function out=tabulateBinaryResponses(responses,correctAns,key1,key2)
+
+out = [];
+fields = {'multipleResp','noResp','Cond1Correct','Cond2Correct',...
+    'Cond1InCorrect','Cond2InCorrect','Cond1HR','Cond2HR','Cond1FAR',...
+    'Cond2FAR','Correct','InCorrect','mACC'};
+for ii = 1:numel(fields)
+    out.(fields{ii}) = [];
+end
+
+% handle special cases
+% for more than one answer, use the first button response
+if any(cellfun(@iscell,responses))
+    ids = find(cellfun(@iscell,responses));
+    for ii = 1:numel(ids)
+        responses(ids(ii))=responses{ids(ii)}(1);
+    end
+    out.multipleResp = ids;
+end
+
+% no response trials
+if any(cellfun(@isempty,responses))
+    out.noResp=find(cellfun(@isempty,responses));
+end
+
+try
+    % tabulate correct/incorrect by cond
+    out.Cond1Correct   = strcmp(responses,key1)&(correctAns==1);
+    out.Cond1InCorrect = strcmp(responses,key2)&(correctAns==1);
+    out.Cond2Correct   =  strcmp(responses,key2)&(correctAns==2);
+    out.Cond2InCorrect = strcmp(responses,key1)&(correctAns==2);
+    
+    out.Cond1HR  = sum(out.Cond1Correct)/sum(correctAns==1);  % correct response to cond 1
+    out.Cond2HR  = sum(out.Cond2Correct)/sum(correctAns==2);   % correct response to cond 2
+    out.Cond1FAR = sum(out.Cond1InCorrect)/(sum(out.Cond1InCorrect)+sum(out.Cond1Correct)); % responded as condition 1 (when it was condition 2)
+    out.Cond2FAR = sum(out.Cond2InCorrect)/(sum(out.Cond2InCorrect)+sum(out.Cond2Correct)); % responded as condition 2 (when it was condition 1)
+    
+    out.Correct   = out.Cond1Correct | out.Cond2Correct;
+    out.InCorrect = out.Cond1InCorrect | out.Cond2InCorrect;
+    out.mACC = mean(out.Correct);
+    
+catch msg
+    keyboard
+end
+
+end
+
+function out=analyzeRTs(RTs)
+out.meanRT = nanmean(RTs);
+out.sdRT = nanstd(RTs);
+out.medianRT = nanmedian(RTs);
+out.kurtosisRT = kurtosis(RTs);
+end
