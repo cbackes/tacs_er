@@ -27,3 +27,4 @@ FirstStimSamps      = eventCodesSamps(FixationIdx+1);
 out.TrueAngleStims  = stimElecAngle(FirstStimSamps);
 out.QuantAngleStims = stimElecAngle3Quant(FirstStimSamps);
 
+save([out.info.dataPath 'EventsPhase'],'out')
