@@ -19,7 +19,7 @@ close all;
 sca;
 
 % load the task
-fileName = strcat(thePath.subjectPath,'/tacs_er.task.mat');
+fileName = strcat(thePath.subjectPath,'/', thePath.exptType,'.mat');
 if exist(fileName,'file')
     load(fileName);
 else
@@ -31,7 +31,7 @@ end
 % Presentation Parameters
 PresParams  = [];
 PresParams.stimDurationInSecs   = 3;
-PresParams.ITI_Range            = [1 1.5]; % variable ITI in secs
+PresParams.ITI_Range            = [0.75 1.25]; % variable ITI in secs
 PresParams.SaveEvNtrials        = 20; % save progress every X# of trials.
 PresParams.lineWidthPix         = 5;       % Set the line width for our fixation cross
 PresParams.dotColor             = [1 1 1];
@@ -45,10 +45,10 @@ PresParams.SelfPaceFlag         = 0;
 PresParams.preStartTime         = 10;
 PresParams.MaxResponseTime      = 3;       % maximum to make recognition decision
 PresParams.MaxConfDecInSecs     = 3;       % max time to make confidence decision
-PresParams.TotalTrialDur        = 5;       %
+PresParams.TotalTrialDur        = 3.5;       %
 
-if  strcmp(thePath.exptType,'tacs_enc')
-    PresParams.StarStimEEG      = 0;
+if  strcmp(thePath.exptType,'tacs_enc') || strcmp(thePath.exptType,'tacs_enc_xdiva')
+    PresParams.StarStimEEG      = 1;
 end
 
 % determine numbers for recognition decision
@@ -470,17 +470,17 @@ try
     end
     
     % save
-    fileName = 'tacs_er.test.mat';
+    fileName = [thePath.exptType '.test'];
     cnt = 0;
     while 1
-        savePath = strcat(thePath.subjectPath,'/',fileName);
+        savePath = strcat(thePath.subjectPath,'/',fileName ,'.mat');
         if ~exist(savePath,'file')
             save(savePath,'ret_out')
             break
         else
             cnt = cnt+1;
             warning(strcat(fileName,' already existed.'))
-            fileName = strcat('tacs_er.test','-',num2str(cnt),'.mat');
+            fileName = strcat(thePath.exptType,'.test','-',num2str(cnt),'.mat');
             warning(strcat('saving as ', fileName))
         end
     end

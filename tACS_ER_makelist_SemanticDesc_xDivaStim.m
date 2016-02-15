@@ -344,49 +344,25 @@ PresParams.stimDurationInFrames = PresParams.VideoFrameRate*PresParams.stimDurat
 
 PresParams.FixCrossFrameIDs           = 1; % on the first frame
 PresParams.FixCrossMinNFrames         = 20;% corresponding to 333ms or 2 cycles of 6Hz
+PresParams.InstructionsLength         = 2*60*PresParams.VideoFrameRate; 
+PresParams.InstructionSet             = mod(thePath.subjectPath,2)==0 +1;
+tacs_er.EncFaceRespID                 = mod(thePath.subjectPath,2)==0 +1;
+tacs_er.EncSceneRespID                = mod(thePath.subjectPath,2)==1 +1;
 
-ZeroPhaseImgFrameIDs       = (PresParams.FixCrossMinNFrames+1):...
-    PresParams.stimDurationInFrames*2:PresParams.nXDivaFrames;
-ZeroPhaseImgFrameIDs(PresParams.stimFrequency+1:end)=[];
-
-ZeroPhaseBlankFrameIDs       = ZeroPhaseImgFrameIDs+PresParams.stimDurationInFrames;
-
-images = zeros([stimSize,1,2], 'uint8');
-images(:,:,1,2) = 128*ones(stimSize,'uint8');
-images(:,:,1,3) = fixCrossImage(stimSize(1),round(stimSize(1)/20));
-
-
-% Save into subjects path
-if ~exist([thePath.subjectPath '/xdiva/' ],'dir')
-    mkdir([thePath.subjectPath '/xdiva/' ])
-end
-
-fileName = 'tacs_enc_xdiva_';
-for tt = 1:nEncTrials
-    
-    images(:,:,1,1) = StimObj(EncStimNames{tt});
-    
-    condNum = tacs_er.EncTrialPhaseConds(tt);
-    % n phases go from 1 to nEncPhases, in jumps of 2 frames=72deg for 6Hz
-    % stimulation
-    imageSequence = zeros(PresParams.nXDivaFrames,1,'uint32');
-    imageSequence(1)=3;
-    imageSequence(ZeroPhaseImgFrameIDs+condNum*2)=1;
-    imageSequence(ZeroPhaseBlankFrameIDs+condNum*2)=2;
-    
-    save([thePath.subjectPath '/xdiva/' fileName num2str(tt) '.mat'],'images','imageSequence')
-end
-
+PresParams.tACSPreTaskWarmUpDur       = 3*60*PresParams.VideoFrameRate;     
 tacs_er.PresParams = PresParams;
 % Save into subjects path
-fileName = 'tacs_er.task.mat';
+fileName = 'tacs_er_xdiva.task.mat';
 if ~exist([thePath.subjectPath '/' fileName],'file')
     save([thePath.subjectPath '/' fileName],'tacs_er')
+    mkdir([thePath.subjectPath '/xdiva/'])
+    overwriteFlag=1;
 else
     warning('tacs task for this subject already created')
     while 1
         s = input('Overwrite? (Y/N)','s');
         if strcmp(s,'Y')
+            overwriteFlag=1;
             save([thePath.subjectPath '/' fileName],'tacs_er')
             break
         elseif strcmp(s,'N')
@@ -395,21 +371,75 @@ else
     end
 end
 
+if overwriteFlag
+    ZeroPhaseImgFrameIDs       = (PresParams.FixCrossMinNFrames+1):...
+        PresParams.stimDurationInFrames*2:PresParams.nXDivaFrames;
+    ZeroPhaseImgFrameIDs(PresParams.stimFrequency+1:end)=[];
+    
+    ZeroPhaseBlankFrameIDs       = ZeroPhaseImgFrameIDs+PresParams.stimDurationInFrames;
+    
+    images = zeros([stimSize,1,3], 'uint8');
+    images(:,:,1,2) = 128*ones(stimSize,'uint8');
+    images(:,:,1,3) = fixCrossImage(stimSize(1),round(stimSize(1)/20));
+    
+    
+    % Save individual stims into subjects path
+    fileName = 'tacs_enc_xdiva_';
+    for tt = 1:nEncTrials
+        
+        images(:,:,1,1) = StimObj(EncStimNames{tt});
+        
+        condNum = tacs_er.EncTrialPhaseConds(tt);
+        % n phases go from 1 to nEncPhases, in jumps of 2 frames=72deg for 6Hz
+        % stimulation
+        imageSequence = zeros(PresParams.nXDivaFrames,1,'uint32');
+        imageSequence(1)=3;
+        imageSequence(ZeroPhaseImgFrameIDs+(condNum-1)*2)=1;
+        imageSequence(ZeroPhaseBlankFrameIDs+(condNum-1)*2)=2;
+        
+        save([thePath.subjectPath '/xdiva/' fileName num2str(tt) '.mat'],'images','imageSequence')
+    end
+    
+    % save instructions (changes by subj number)
+    if PresParams.InstructionSet==1
+        img  = rgb2gray(imread([thePath.stim '/EncInstructions_xDiva1.png']));
+    else
+        img  = rgb2gray(imread([thePath.stim '/EncInstructions_xDiva2.png']));
+    end
+    images = zeros([size(img),1,1], 'uint8');
+    images(:,:,1,1) = img;        
+    
+    % 2 mins worth of instructions.
+    imageSequence = zeros(PresParams.InstructionsLength,1,'uint32');
+    imageSequence(1)=1;    
+    save([thePath.subjectPath '/xdiva/Instructions_1.mat'],'images','imageSequence')
+    
+    % save pre-task warm up sequence    
+    images = zeros([200,200,1,1], 'uint8');
+    images(:,:,1,1) = 128*ones([200 200],'uint8');
+    
+    imageSequence = zeros(PresParams.tACSPreTaskWarmUpDur,1,'uint32');
+    imageSequence(1)=1;    
+    save([thePath.subjectPath '/xdiva/tACSPreTask_1.mat'],'images','imageSequence')
+    
+end
+
+
 
 end
 
 function im=fixCrossImage(imgSize,fixCrossSize)
-    % all in pixels
-    % only supports square imgages (for now).
-    center = round(imgSize(1)/2);
-    horizontalMarkIDs = [(center-fixCrossSize):(center+fixCrossSize)];  
-    verticalMarkIDs   = horizontalMarkIDs;
-    
-    im = 128*ones(imgSize(1),imgSize(1),'uint8');
-    im([-1:1]+center,horizontalMarkIDs) = 255;
-    im(verticalMarkIDs,[-1:1]+center)   = 255;
-    
-    return
-    
+% all in pixels
+% only supports square imgages (for now).
+center = round(imgSize(1)/2);
+horizontalMarkIDs = [(center-fixCrossSize):(center+fixCrossSize)];
+verticalMarkIDs   = horizontalMarkIDs;
+
+im = 128*ones(imgSize(1),imgSize(1),'uint8');
+im([-1:1]+center,horizontalMarkIDs) = 255;
+im(verticalMarkIDs,[-1:1]+center)   = 255;
+
+return
+
 end
 
