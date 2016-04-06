@@ -41,7 +41,7 @@ function [tacs_er] = tACS_ER_makelist_SemanticDesc_xDivaStim(thePath)
 %------------------------------------------------------------------------%
 % Author:       Alex Gonzalez
 % Created:      Jan, 2016
-% LastUpdate:   Feb 1th, 2016
+% LastUpdate:   April 6, 2016
 %------------------------------------------------------------------------%
 
 %% Set-up
@@ -69,11 +69,15 @@ nRetConds  = 4;     % old and new conditons per stim type (Face/scene)
 nRetBlocks = nEncBlocks;    % blocks
 maxNumConsecutiveOld = 8;   % maximum number of old trials in a row
 
-% reset stream (to avoid duplicate lists)
-s = RandStream.create('mt19937ar','seed',sum(100*clock));
-if strfind(version,'R2014b')>0
-    RandStream.setGlobalStream(s)
-end
+% % reset stream (to avoid duplicate lists)
+% s = RandStream.create('mt19937ar','seed',sum(100*clock));
+% if strfind(version,'R2014b')>0
+%     RandStream.setGlobalStream(s)
+% end
+
+% changed on 4/6/16 to make it work on different matlab versions. 
+s = RandStream.create('mt19937ar','seed',thePath.subjNum);
+RandStream.setGlobalStream(s)
 
 %% load data names
 % scenes

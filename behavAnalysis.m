@@ -7,7 +7,7 @@ function behav_out = behavAnalysis(expt,nSubjs)
 %------------------------------------------------------------------------%
 % Author:         Alex Gonzalez
 % Created:        Dec 1, 2015
-% LastUpdate:     Dec 8, 2015
+% LastUpdate:     April 4, 2016
 %------------------------------------------------------------------------%
 %
 %
@@ -48,8 +48,10 @@ behav_out.retSummary.Face_dPrime_C      = nan(nSubjs,1);
 behav_out.retSummary.Scene_dPrime       = nan(nSubjs,1);
 behav_out.retSummary.Scene_dPrime_C     = nan(nSubjs,1);
 behav_out.retSummary.meanAccuracyByConf = nan(nSubjs,3);
-behav_out.retSummary.meanHitRTs         = nan(nSubjs,1);
-behav_out.retSummary.meanCRsRTs         = nan(nSubjs,1);
+behav_out.retSummary.meanHit_RTs        = nan(nSubjs,1);
+behav_out.retSummary.meanCRs_RTs        = nan(nSubjs,1);
+behav_out.retSummary.meanFA_RTs         = nan(nSubjs,1);
+behav_out.retSummary.meanMiss_RTs        = nan(nSubjs,1);
 behav_out.retSummary.HitCRs_RTs_TVals   = nan(nSubjs,1);
 
 behav_out.EncRet = [];
@@ -58,22 +60,37 @@ behav_out.EncRet.EncMissTrialIDs        = cell(nSubjs,1);
 behav_out.EncRet.EncHitRTs              = cell(nSubjs,1);
 behav_out.EncRet.EncMissRTs             = cell(nSubjs,1);
 
+behav_out.Trials =[]; nEncTrials = 300; nRetTrials = 450;
+behav_out.Trials.EncTrialPhaseCondition = nan(nSubjs,nEncTrials);
+behav_out.Trials.EncTrialPhase          = nan(nSubjs,nEncTrials);
+behav_out.Trials.EncCondAtRet           = nan(nSubjs,nRetTrials);
+behav_out.Trials.EncStimIDAtRet         = nan(nSubjs,nRetTrials);
+
 for ss = 1:nSubjs
     try
-        load([dataPath 's' num2str(ss+1) '/tacs_er.encoding.mat'])
-        behav_out.encSubj{ss} = EncAnalysisBySubj(enc_out);
-        behav_out.encSummary.meanAcc(ss)    = behav_out.encSubj{ss}.meanAccuracy;
-        behav_out.encSummary.FaceHR(ss)     = behav_out.encSubj{ss}.FaceHitRate;
-        behav_out.encSummary.SceneHR(ss)    = behav_out.encSubj{ss}.SceneHitRate;
-        behav_out.encSummary.meanRTs(ss)    = behav_out.encSubj{ss}.RTsStats.meanRT;
-        behav_out.encSummary.meanFaceRTs(ss) = behav_out.encSubj{ss}.FaceRTsStats.meanRT;
-        behav_out.encSummary.meanSceneRTs(ss) = behav_out.encSubj{ss}.SceneRTsStats.meanRT;
-        behav_out.encSummary.FaceScene_RTs_TVals(ss) = behav_out.encSubj{ss}.RTsStats_FvsSc.tstat;
+        load([dataPath 's' num2str(ss) '/tacs_er.encoding.mat'])
+        behav_out.encSubj{ss}                   = EncAnalysisBySubj(enc_out);
+        behav_out.encSummary.meanAcc(ss)        = behav_out.encSubj{ss}.meanAccuracy;
+        behav_out.encSummary.FaceHR(ss)         = behav_out.encSubj{ss}.FaceHitRate;
+        behav_out.encSummary.SceneHR(ss)        = behav_out.encSubj{ss}.SceneHitRate;
+        behav_out.encSummary.meanRTs(ss)        = behav_out.encSubj{ss}.RTsStats.meanRT;
+        behav_out.encSummary.meanFaceRTs(ss)    = behav_out.encSubj{ss}.FaceRTsStats.meanRT;
+        behav_out.encSummary.meanSceneRTs(ss)   = behav_out.encSubj{ss}.SceneRTsStats.meanRT;
+        behav_out.encSummary.FaceScene_RTs_TVals(ss) ...
+            = behav_out.encSubj{ss}.RTsStats_FvsSc.tstat;
+        
     catch msg
     end
     try
-        load([dataPath 's' num2str(ss+1) '/tacs_er.test.mat'])
-        behav_out.retSubj{ss} = RetAnalysisBySubj(ret_out);
+        %load([dataPath 's' num2str(ss+1) '/tacs_er.test.mat'])
+        load([dataPath 's' num2str(ss) '/tacs_enc_xdiva.test.mat'])
+        behav_out.retSubj{ss}                       = RetAnalysisBySubj(ret_out);
+        
+        behav_out.Trials.EncTrialPhaseCondition(ss,:)   = ret_out.expInfo.EncTrialPhaseConds;
+        behav_out.Trials.EncTrialPhase(ss,:)            = ret_out.expInfo.EncTrialPhase;
+        behav_out.Trials.EncCondAtRet(ss,:)             = ret_out.expInfo.EncCondAtRet;
+        behav_out.Trials.EncStimIDAtRet(ss,:)           = behav_out.retSubj{ss}.EncStimIDAtRet;        
+                
         behav_out.retSummary.dPrime(ss)             = behav_out.retSubj{ss}.dPrime;
         behav_out.retSummary.dPrime_C(ss)           = behav_out.retSubj{ss}.dPrime_C;
         behav_out.retSummary.Face_dPrime(ss)        = behav_out.retSubj{ss}.Face_dPrime;

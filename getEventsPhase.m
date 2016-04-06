@@ -1,6 +1,11 @@
-function out = getEventsPhase(subj)
+function out = getEventsPhase(subj, expt)
 out = [];
-out.info = subjFileInfo(subj);
+
+if strcmp(expt,'tacs_er')
+    out.info = subjFileInfo(subj);
+elseif strcmp(expt,'tacs_enc_xdiva')
+    out.info = subjFileInfo_xdiva(subj);
+end
 
 stimData=load([out.info.dataPath out.info.stimulationFileName]);
 eegData =load([out.info.dataPath out.info.eegEncodingFileName]);

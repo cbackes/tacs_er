@@ -80,7 +80,6 @@ print(gcf, '-dpdf', '../plots/Encoding_ResultsFaceVsScene');
 %% retrieval
 
 dPrime = behav_out.retSummary.dPrime;
-
 nSubjs = numel(dPrime);
 
 figure(1);clf;

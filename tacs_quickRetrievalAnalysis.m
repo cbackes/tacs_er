@@ -1,10 +1,10 @@
 
-expt = 'tacs_enc';
+expt = 'tacs_enc_xdiva';
 mainPath = ['~/Google Drive/Research/tACS/tACS_ER_task/data/' expt '/'];
-filename = 'tacs_er.test.mat';
+filename = 'tacs_enc_xdiva.test.mat';
 
 RespTypes = {'old','new','unsure'};
-subjs = [4:10];
+subjs = [1:17];
 nSubjs = numel(subjs);
 dPFaces = zeros(nSubjs,1);
 dPScns  =  zeros(nSubjs,1);
