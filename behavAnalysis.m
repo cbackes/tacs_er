@@ -7,7 +7,7 @@ function behav_out = behavAnalysis(expt,nSubjs)
 %------------------------------------------------------------------------%
 % Author:         Alex Gonzalez
 % Created:        Dec 1, 2015
-% LastUpdate:     April 4, 2016
+% LastUpdate:     April 21, 2016
 %------------------------------------------------------------------------%
 %
 %
@@ -31,6 +31,7 @@ behav_out     = [];
 behav_out.encSubj = cell(nSubjs,1);
 behav_out.retSubj = cell(nSubjs,1);
 
+% encoding stats pre-allocation
 behav_out.encSummary = [];
 behav_out.encSummary.meanAcc        = nan(nSubjs,1);
 behav_out.encSummary.FaceHR         = nan(nSubjs,1);
@@ -40,6 +41,7 @@ behav_out.encSummary.meanFaceRTs    = nan(nSubjs,1);
 behav_out.encSummary.meanSceneRTs   = nan(nSubjs,1);
 behav_out.encSummary.FaceScene_RTs_TVals = nan(nSubjs,1);
 
+% retrieval stats pre-allocation
 behav_out.retSummary =[];
 behav_out.retSummary.dPrime             = nan(nSubjs,1);
 behav_out.retSummary.dPrime_C           = nan(nSubjs,1);
@@ -47,13 +49,27 @@ behav_out.retSummary.Face_dPrime        = nan(nSubjs,1);
 behav_out.retSummary.Face_dPrime_C      = nan(nSubjs,1);
 behav_out.retSummary.Scene_dPrime       = nan(nSubjs,1);
 behav_out.retSummary.Scene_dPrime_C     = nan(nSubjs,1);
-behav_out.retSummary.meanAccuracyByConf = nan(nSubjs,3);
+
+% reaction time summaries
 behav_out.retSummary.meanHit_RTs        = nan(nSubjs,1);
 behav_out.retSummary.meanCRs_RTs        = nan(nSubjs,1);
 behav_out.retSummary.meanFA_RTs         = nan(nSubjs,1);
-behav_out.retSummary.meanMiss_RTs        = nan(nSubjs,1);
+behav_out.retSummary.meanMiss_RTs       = nan(nSubjs,1);
+behav_out.retSummary.median_Hit_RTs     = nan(nSubjs,1);
+behav_out.retSummary.median_CRs_RTs     = nan(nSubjs,1);
+behav_out.retSummary.median_FA_RTs      = nan(nSubjs,1);
+behav_out.retSummary.median_Miss_RTs    = nan(nSubjs,1);
 behav_out.retSummary.HitCRs_RTs_TVals   = nan(nSubjs,1);
 
+% confidence summaries
+behav_out.retSummary.dPrimeConf         = nan(nSubjs,3);
+behav_out.retSummary.dPrimeConf_C       = nan(nSubjs,3);
+behav_out.retSummary.meanAccuracyByConf = nan(nSubjs,3);
+behav_out.retSummary.nRespByConf        = nan(nSubjs,3);
+behav_out.retSummary.nH_nMiss_nFA_nCRs  = nan(nSubjs,3,4);
+
+
+% trials
 behav_out.EncRet = [];
 behav_out.EncRet.EncHitTrialIDs         = cell(nSubjs,1);
 behav_out.EncRet.EncMissTrialIDs        = cell(nSubjs,1);
@@ -61,10 +77,13 @@ behav_out.EncRet.EncHitRTs              = cell(nSubjs,1);
 behav_out.EncRet.EncMissRTs             = cell(nSubjs,1);
 
 behav_out.Trials =[]; nEncTrials = 300; nRetTrials = 450;
-behav_out.Trials.EncTrialPhaseCondition = nan(nSubjs,nEncTrials);
+behav_out.Trials.EncTrialPhaseCond      = nan(nSubjs,nEncTrials);
 behav_out.Trials.EncTrialPhase          = nan(nSubjs,nEncTrials);
+behav_out.Trials.RetStimIDAtEnc         = nan(nSubjs,nEncTrials);
+behav_out.Trials.StimTypeEnc            = nan(nSubjs,nEncTrials); %
 behav_out.Trials.EncCondAtRet           = nan(nSubjs,nRetTrials);
 behav_out.Trials.EncStimIDAtRet         = nan(nSubjs,nRetTrials);
+
 
 for ss = 1:nSubjs
     try
@@ -84,33 +103,53 @@ for ss = 1:nSubjs
     try
         %load([dataPath 's' num2str(ss+1) '/tacs_er.test.mat'])
         load([dataPath 's' num2str(ss) '/tacs_enc_xdiva.test.mat'])
-        behav_out.retSubj{ss}                       = RetAnalysisBySubj(ret_out);
+        behav_out.retSubj{ss}                           = RetAnalysisBySubj(ret_out);
         
-        behav_out.Trials.EncTrialPhaseCondition(ss,:)   = ret_out.expInfo.EncTrialPhaseConds;
+        behav_out.Trials.EncTrialPhaseCond(ss,:)        = ret_out.expInfo.EncTrialPhaseConds;
         behav_out.Trials.EncTrialPhase(ss,:)            = ret_out.expInfo.EncTrialPhase;
         behav_out.Trials.EncCondAtRet(ss,:)             = ret_out.expInfo.EncCondAtRet;
+
         behav_out.Trials.EncStimIDAtRet(ss,:)           = behav_out.retSubj{ss}.EncStimIDAtRet;        
-                
-        behav_out.retSummary.dPrime(ss)             = behav_out.retSubj{ss}.dPrime;
-        behav_out.retSummary.dPrime_C(ss)           = behav_out.retSubj{ss}.dPrime_C;
-        behav_out.retSummary.Face_dPrime(ss)        = behav_out.retSubj{ss}.Face_dPrime;
-        behav_out.retSummary.Face_dPrime_C(ss)      = behav_out.retSubj{ss}.Face_dPrime_C;
-        behav_out.retSummary.Scene_dPrime(ss)       = behav_out.retSubj{ss}.Scene_dPrime;
-        behav_out.retSummary.Scene_dPrime_C(ss)     = behav_out.retSubj{ss}.Scene_dPrime_C;
-        behav_out.retSummary.meanAccuracyByConf(ss,:) = behav_out.retSubj{ss}.meanAccuracyByConf;
-        behav_out.retSummary.meanHit_RTs(ss)          = behav_out.retSubj{ss}.Hit_RTsStats.meanRT;
-        behav_out.retSummary.meanCRs_RTs(ss)         = behav_out.retSubj{ss}.CRs_RTsStats.meanRT;
-        behav_out.retSummary.meanFA_RTs(ss)         = behav_out.retSubj{ss}.FA_RTsStats.meanRT;
-        behav_out.retSummary.meanMiss_RTs(ss)         = behav_out.retSubj{ss}.Misses_RTsStats.meanRT;
-        behav_out.retSummary.HitCRs_RTs_TVals(ss)   = behav_out.retSubj{ss}.HitCRs_RTs.tstat;
+        [s,i]                                           = sort(behav_out.Trials.EncStimIDAtRet(ss,:));
+        behav_out.Trials.RetStimIDAtEnc(ss,:)           = i(s>0);
+        behav_out.Trials.StimTypeEnc(ss,:)              = ret_out.expInfo.EncStimType;
         
-        behav_out.EncRet.EncHitTrialIDs{ss}     = behav_out.retSubj{ss}.EncHitTrialIDs;
-        behav_out.EncRet.EncMissTrialIDs{ss}    = behav_out.retSubj{ss}.EncMissTrialIDs;
-        behav_out.EncRet.EncHCTrials{ss}       = behav_out.retSubj{ss}.EncHCTrials;
-        behav_out.EncRet.EncMCTrials{ss}       = behav_out.retSubj{ss}.EncMCTrials;
-        behav_out.EncRet.EncLCTrials{ss}       = behav_out.retSubj{ss}.EncLCTrials;
-        behav_out.EncRet.EncHitRTs{ss}          = behav_out.retSubj{ss}.EncHitRTs;
-        behav_out.EncRet.EncMissRTs{ss}         = behav_out.retSubj{ss}.EncMissRTs;
+        % DPrimes and accuracy summary measures
+        behav_out.retSummary.dPrime(ss)                 = behav_out.retSubj{ss}.dPrime;
+        behav_out.retSummary.dPrime_C(ss)               = behav_out.retSubj{ss}.dPrime_C;
+        behav_out.retSummary.Face_dPrime(ss)            = behav_out.retSubj{ss}.Face_dPrime;
+        behav_out.retSummary.Face_dPrime_C(ss)          = behav_out.retSubj{ss}.Face_dPrime_C;
+        behav_out.retSummary.Scene_dPrime(ss)           = behav_out.retSubj{ss}.Scene_dPrime;
+        behav_out.retSummary.Scene_dPrime_C(ss)         = behav_out.retSubj{ss}.Scene_dPrime_C;
+        behav_out.retSummary.meanAccuracyByConf(ss,:)   = behav_out.retSubj{ss}.meanAccuracyByConf;        
+        behav_out.retSummary.dPrimeConf(ss,:)           = behav_out.retSubj{ss}.dPrimeConf;
+        behav_out.retSummary.dPrimeConf_C(ss,:)         = behav_out.retSubj{ss}.dPrimeConf_C;
+        
+        % numbers of trials per conditions
+        behav_out.retSummary.nH_nMiss_nFA_nCRs(ss,:,:)  = behav_out.retSubj{ss}.nH_nMiss_nFA_nCRs;
+        behav_out.retSummary.nRespByConf(ss,:)          = behav_out.retSubj{ss}.nRespByConf;
+        
+        % reaction times
+        behav_out.retSummary.meanHit_RTs(ss)            = behav_out.retSubj{ss}.Hit_RTsStats.meanRT;
+        behav_out.retSummary.meanCRs_RTs(ss)            = behav_out.retSubj{ss}.CRs_RTsStats.meanRT;
+        behav_out.retSummary.meanFA_RTs(ss)             = behav_out.retSubj{ss}.FA_RTsStats.meanRT;
+        behav_out.retSummary.meanMiss_RTs(ss)           = behav_out.retSubj{ss}.Misses_RTsStats.meanRT;
+        
+        behav_out.retSummary.median_Hit_RTs(ss)         = behav_out.retSubj{ss}.Hit_RTsStats.medianRT;
+        behav_out.retSummary.median_CRs_RTs(ss)         = behav_out.retSubj{ss}.CRs_RTsStats.medianRT;
+        behav_out.retSummary.median_FA_RTs(ss)          = behav_out.retSubj{ss}.FA_RTsStats.medianRT;
+        behav_out.retSummary.median_Miss_RTs(ss)        = behav_out.retSubj{ss}.Misses_RTsStats.medianRT;
+        
+        behav_out.retSummary.HitCRs_RTs_TVals(ss)       = behav_out.retSubj{ss}.HitCRs_RTs.tstat;
+        
+        % trials
+        behav_out.EncRet.EncHitTrialIDs{ss}         = behav_out.retSubj{ss}.EncHitTrialIDs;
+        behav_out.EncRet.EncMissTrialIDs{ss}        = behav_out.retSubj{ss}.EncMissTrialIDs;
+        behav_out.EncRet.EncHCTrials{ss}            = behav_out.retSubj{ss}.EncHCTrials;
+        behav_out.EncRet.EncMCTrials{ss}            = behav_out.retSubj{ss}.EncMCTrials;
+        behav_out.EncRet.EncLCTrials{ss}            = behav_out.retSubj{ss}.EncLCTrials;
+        behav_out.EncRet.EncHitRTs{ss}              = behav_out.retSubj{ss}.EncHitRTs;
+        behav_out.EncRet.EncMissRTs{ss}             = behav_out.retSubj{ss}.EncMissRTs;
         
     catch msg
     end
@@ -251,7 +290,19 @@ for cc = 1:3
     ret.CorrRejRateByConf(cc)     = binOut.Cond2HR;
     ret.FARateByConf(cc)          = binOut.Cond2FAR;
     ret.MissRateByConf(cc)        = binOut.Cond1FAR;
+        
+    x1           = sum(binOut.Cond1Correct); % # hits
+    x2           = sum(binOut.Cond1InCorrect); % # misses
+    x3           = sum(binOut.Cond2InCorrect); % # FA
+    x4           = sum(binOut.Cond2Correct); % # CRs
     
+    % #s of hits/misses/fa/CRs
+    ret.nH_nMiss_nFA_nCRs(cc,:)   = [x1 x2 x3 x4];    
+    
+    % compute dprime
+    [ret.dPrimeConf(cc), ret.dPrimeConf_C(cc)] = ...
+    calc_dPrime(x1,x2,x3,x4);
+
 end
 
 ret.EncHitTrialIDs     = ret.EncStimIDAtRet(ret.Hits);

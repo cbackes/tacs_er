@@ -1,67 +1,229 @@
 
-dataPath    = '~/Google Drive/Research/tACS/tACS_ER_task/data/tacs_enc_xdiva/';
-nSubjs      = 20;
-
 % load behavioral data
+dataPath    = '~/Google Drive/Research/tACS/tACS_ER_task/data/tacs_enc_xdiva/';
 load([dataPath 'Summary/BehavSummary.mat']) 
+addpath CircStats
 %%
+nSubjs =25;
+
 out                         = [];
+out.nEncTrials              = 300;
+out.SubjWithUniqueSeq       = sum(triu(corr(behav_out.Trials.EncCondAtRet')>0.99))==1;
 out.nSubjs                  = nSubjs;
-out.EventPhase              = behav_out.Trials.EncTrialPhase; % phase at encoding
-out.EventPhaseCond          = behav_out.Trials.EncTrialPhaseCondition;
+out.EventPhase              = behav_out.Trials.EncTrialPhase/360*2*pi; % phase at encoding
+out.EventPhaseCond          = behav_out.Trials.EncTrialPhaseCond;
 out.EventEncCondAtRet       = behav_out.Trials.EncCondAtRet; 
 out.EncStimAtRet            = behav_out.Trials.EncStimIDAtRet;
-out.RetStimAtEnc            = nan(nSubjs,300);
-out.HitMissEncTrialIDs         = nan(nSubjs,2,300);
-out.ValidEncTrialIDs           = nan(nSubjs,300);
+out.RetStimAtEnc            = nan(nSubjs,out.nEncTrials);
 
-out.HitMissPhases           = cell(nSubjs,2); % first column is hits, second misses
-out.HitMissPhaseCond        = cell(nSubjs,2); % first column is hits, second misses
-out.HitMisRTSubj            = cell(nSubjs,2); % first column is hits, second misses
-out.ConfidenceByCond        = cell(nSubjs,2); % first column is hits, second misses
-out.PhasesByConf            = cell(nSubjs,3); % high to low
+out.datMatColumnNames      = ...
+    {'StimType','PercepResp','FcScCorrect','RTs1','PhaseCond','PhaseDeg',...
+    'Hit','Miss','Confidence','MemScore','RTs2','RetPos','ConfWeStimVects','RTWeStimVects'};
+% matrix with all conditions and scores.
+% 1st   column: face=1/scene=2
+% 2nd   column: perceptual response (1/2)
+% 3rd   column: correct face/scene categorization (bool)
+% 4th   column: reaction times for perceptual decision
+% 5rd   column: Phase Condition 
+% 6th   column: Phase (degrees)
+% 7th   column: Hits (binary) -> subsequently remember
+% 8th   column: Misses (binary -> subsequenty forgotten
+% 9th   column: Confidence-> subsequent confidence in hits /misses
+% 10th   column: MemScore (re-scale confidence misses*-1)
+% 11th   column: reaction times on memory decision
+% 12th  column: position of item at retrieval
+% 13th  column: confidence weighted phase trial vectors conf*exp(1j*phase)
+% 13th  column: -log10(RT) weighted phase trial vectors rt*exp(1j*phase)
+
+out.datMat                 =  nan(out.nSubjs,out.nEncTrials,numel(out.datMatColumnNames));
+out.datMat(:,:,1)          =  behav_out.Trials.StimTypeEnc;
+out.datMat(:,:,5)          =  behav_out.Trials.EncTrialPhaseCond;
+out.datMat(:,:,6)          =  out.EventPhase;
+
+out.HitMissEncTrialIDs      = nan(nSubjs,2,300);
+out.ValidEncTrialIDs        = nan(nSubjs,300);
+
+% first column is hits, second misses
+out.HitMissPhases           = cell(nSubjs,2);   % phases for each trial cond
+out.HitMissMePhase          = nan(nSubjs,2);    % mean phase per cond
+out.HitMissAbPhase          = nan(nSubjs,2);    % mean resulting vector length per condition
+out.HitMissCWMePhase        = nan(nSubjs,2);    % mean confidence weighted phase
+out.HitMissCWAbPhase        = nan(nSubjs,2);    % mean confidence vector length
+out.HitMissPhaseCond        = cell(nSubjs,2);   % phase condition (1 to 5) 
+out.HitMissRTSubj           = cell(nSubjs,2);   % RTs per condition
+out.PhasesByConf            = cell(nSubjs,3);   % phases per confidence 
+out.HitMissPhaseConf        = cell(nSubjs,2,3);  % phases per confidence and condition
+out.HitMissMePhaseConf      = nan(nSubjs,2,3);   % mean phase per conf and condition
+out.HitMissAbPhaseConf      = nan(nSubjs,2,3);   % mean vec length per conf and cond
+out.HitMissCMTestConf       = nan(nSubjs,3);     % circular test for difference in phases.
+
+out.MemScore                = nan(nSubjs,1);
+out.MemScoreM               = nan(nSubjs,1);
+out.MemScoreStimType        = nan(nSubjs,2);
+out.MemScoreByPhase         = nan(nSubjs,5);
+out.nHitsByPhase            = nan(nSubjs,5);
+out.propHitsByPhase         = nan(nSubjs,5);
+out.nMissByPhase            = nan(nSubjs,5);
+out.propMissByPhase         = nan(nSubjs,5);
 
 % circular distribution stats
-out.HCRDistFromUniform      = nan(nSubjs,2);
-out.ConfDistFromUniform     = nan(nSubjs,2);
-out.DiffInDist              = nan(nSubjs,2);
+out.HitMiss_DistFromUniform     = nan(nSubjs,2);
+out.Conf_DistFromUniform        = nan(nSubjs,3);
+out.HitsConf_DistFromUniform    = nan(nSubjs,3);
+out.MissConf_DistFromUniform    = nan(nSubjs,3);
+out.DiffInDist                  = nan(nSubjs,2);
 
 for ss = 1:out.nSubjs
         
     % Sort trials by their position at encoding.   
-    EncIDsAtRet = out.EncStimAtRet(ss,:);
-    [s,i] = sort(EncIDsAtRet);
-    out.RetIDsAtEnc(ss,:) = i(s>0);
+    EncIDsAtRet             = out.EncStimAtRet(ss,:);
+    [s,i]                   = sort(EncIDsAtRet);
+    out.RetIDsAtEnc(ss,:)   = i(s>0);
+    out.datMat(ss,:,12)     = i(s>0);
+    % Get retrieval RTs
+    out.datMat(ss,:,11)         = behav_out.retSubj{ss}.RTs(out.RetIDsAtEnc(ss,:));
     
     % Trial IDs for hits and misses.
-    hits                            = behav_out.retSubj{ss}.Hits;   % hits IDs @ retrieval
-    misses                          = behav_out.retSubj{ss}.Misses; % miss IDs @ retrieval
-    % get hits and misses IDs at encoding.
-    out.HitMissEncTrialIDs(ss,1,:)  = hits(out.RetIDsAtEnc(ss,:));
-    out.HitMissEncTrialIDs(ss,2,:)  = misses(out.RetIDsAtEnc(ss,:));
-    out.ValidEncTrialIDs(ss,:)      = out.HitMissEncTrialIDs(ss,1,:) | out.HitMissEncTrialIDs(ss,2,:);
-
+    out.datMat(ss,:,7)      = behav_out.retSubj{ss}.Hits(out.RetIDsAtEnc(ss,:));   % hits IDs at encoding
+    out.datMat(ss,:,8)      = behav_out.retSubj{ss}.Misses(out.RetIDsAtEnc(ss,:)); % miss IDs at encoding
+    
     % Get true phase for Hits and Misses
-    out.HitMissPhases{ss,1} = out.EventPhase(ss,out.HitMissEncTrialIDs(ss,1,:));    
-    out.HitMissPhases{ss,2} = out.EventPhase(ss,out.HitMissEncTrialIDs(ss,2,:));    
+    out.HitMissPhases{ss,1} = out.EventPhase(ss,out.datMat(ss,:,7)==1);    
+    out.HitMissPhases{ss,2} = out.EventPhase(ss,out.datMat(ss,:,8)==1);    
     
     % Get phase condition for Hits and Misses
-    out.HitMissPhaseCond{ss,1} = out.EventPhaseCond(ss,out.HitMissEncTrialIDs(ss,1,:));    
-    out.HitMissPhaseCond{ss,2} = out.EventPhaseCond(ss,out.HitMissEncTrialIDs(ss,2,:));    
-    
+    out.HitMissPhaseCond{ss,1} = out.EventPhaseCond(ss,out.datMat(ss,:,7)==1);    
+    out.HitMissPhaseCond{ss,2} = out.EventPhaseCond(ss,out.datMat(ss,:,8)==1);    
+        % Get Mean Phase and Mean Vector length
+    for jj = 1:2        
+        x = exp(1i*out.HitMissPhases{ss,jj}');
+        xm = mean(x);
+        out.HitMissMePhase(ss,jj) = angle(xm);
+        out.HitMissAbPhase(ss,jj) = abs(xm);
+    end
+
     % Get Confidence and assign sign based on hit/miss
-    Confidence                  = behav_out.retSubj{ss}.Confidence;
-    out.ConfidenceByCond(ss,1)  = Confidence(hits);
-    out.ConfidenceByCond(ss,2)  = Confidence(misses)*-1;
+    Confidence                  = behav_out.retSubj{ss}.Confidence;   
+    Confidence(Confidence==0)   = nan;
+    out.datMat(ss,:,9)          = Confidence(out.RetIDsAtEnc(ss,:));      
+    out.datMat(ss,:,10)         = out.datMat(ss,:,9);
+    out.datMat(ss,out.datMat(ss,:,8)==1,10) = -1*out.datMat(ss,out.datMat(ss,:,8)==1,10);
     
-    %CondPerSubj{ss,1} = EventPhaseCond(ss,behav_out.EncRet.EncHitTrialIDs{ss});
+    out.datMat(ss,:,13) = out.datMat(ss,:,9).*exp(1i*out.datMat(ss,:,6));
+    for jj=1:2
+        trials = squeeze(out.datMat(ss,:,6+jj))==1;
+        x = mean(out.datMat(ss,trials,13),'omitnan');
+        out.HitMissCWMePhase(ss,jj) = angle(x);
+        out.HitMissCWAbPhase(ss,jj) = abs(x);
+    end
+    % Get MemScore
+    out.MemScore(ss)  = sum(out.datMat(ss,:,10),'omitnan');
+    out.MemScoreM(ss) = mean(out.datMat(ss,:,10),'omitnan');
     
-    Confidence(~(hits|misses))  = [];            
+    % GetMemScore by stim type: face/scene
+    for jj=1:2
+        trials = squeeze(out.datMat(ss,:,1)==jj)==1;
+        out.MemScoreStimType(ss,jj)= mean(out.datMat(ss,trials,10),'omitnan');
+    end
     
+    % GetMemScore by phase
+    for pp = 1:5
+        trials = squeeze(out.datMat(ss,:,5)==pp)==1;
+        out.MemScoreByPhase(ss,pp)= mean(out.datMat(ss,trials,10),'omitnan');
+        
+    end
     
-   % EncStimAtRet(~(hits|misses))=[];
-    %ConfBySubj{ss} = Confidence;
+    % Obtain mean phase and mean vector length per confidence level by
+    % subject.
+    for co=1:3
+        try
+            for jj=1:2
+                out.HitMissPhaseConf{ss,jj,co} = out.EventPhase(ss, squeeze(out.datMat(ss,:,9)==co & out.datMat(ss,:,6+jj)==1));
+                x = mean(exp(1i*out.HitMissPhaseConf{ss,jj,co}'));        
+                out.HitMissMePhaseConf(ss,jj,co)= angle(x);
+                out.HitMissAbPhaseConf(ss,jj,co)= abs(x);
+            end % for hits/misses
+            out.HitMissCMTestConf(ss,co)  = circ_cmtest(out.HitMissPhaseConf{ss,1,co}',out.HitMissPhaseConf{ss,2,co}');
+        catch
+        end
+    end % for confidence level.
+
+    % Hit/Miss distance from uniform   
+    [~,out.HitMiss_DistFromUniform(ss,1)]   = circ_rtest(out.HitMissPhases{ss,1});
+    [~,out.HitMiss_DistFromUniform(ss,2)]   = circ_rtest(out.HitMissPhases{ss,2});
+    
+    % Confidence Distance from uniform
+    for co=1:3
+        [~,out.Conf_DistFromUniform(ss,co)] = circ_rtest(out.EventPhase(ss,out.datMat(ss,:,9)==co));
+    end
+    
+    % Confidence Distance from uniform for hits
+    for co=1:3
+        try
+        [~,out.HitsConf_DistFromUniform(ss,co)] =...
+            circ_rtest(out.EventPhase(ss,out.datMat(ss,:,9)==co & out.datMat(ss,:,7)==1));
+        catch
+        end
+    end
+    
+     % Confidence Distance from uniform for misses
+    for co=1:3
+        try
+        [~,out.MissConf_DistFromUniform(ss,co)] =...
+            circ_rtest(out.EventPhase(ss,out.datMat(ss,:,9)==co & out.datMat(ss,:,8)==1));
+        catch
+        end
+    end
+    
+    % Get proportion of hits and misses by phase
+    for pp = 1:5
+        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,7)==1;
+        out.nHitsByPhase(ss,pp)= sum(trials);
+         
+        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,8)==1;
+        out.nMissByPhase(ss,pp)= sum(trials);
+    end
+    out.propHitsByPhase(ss,:) = out.nHitsByPhase(ss,:)/sum(out.nHitsByPhase(ss,:));
+    out.propMissByPhase(ss,:) = out.nMissByPhase(ss,:)/sum(out.nMissByPhase(ss,:));
+
+    % RT analyses. 
+    % Get RTs by phase and condition
+    for pp=1:5
+        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,7)==1;
+        out.HitMissRTsByPhase(ss,pp,1)= mean(-log10(out.datMat(ss,trials,11)));
+        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,8)==1;
+        out.HitMissRTsByPhase(ss,pp,2)= mean(-log10(out.datMat(ss,trials,11)));
+    end
+    
+    % Weight Phases by RT
+    out.datMat(ss,:,14) = -log10(out.datMat(ss,:,11)).*exp(1i*out.datMat(ss,:,6));
+    for jj=1:2
+        trials = squeeze(out.datMat(ss,:,6+jj))==1;
+        x = mean(out.datMat(ss,trials,14),'omitnan');
+        out.HitMissRTWMePhase(ss,jj) = angle(x);
+        out.HitMissRTWAbPhase(ss,jj) = abs(x);
+    end    
 end
+
+
+%% subject by subject phased shift
+th = mod(out.HitMissMePhase,2*pi);
+rho = out.HitMissAbPhase;
+z = rho.*exp(1i*th);
+zD = z(:,1)./z(:,2);
+
+out2 =[];
+out2.HMissTheta = mod(out.HitMissMePhase,2*pi);
+out2.HMissRho   =  out.HitMissAbPhase;
+out2.HMiss
+
+
+
+save([dataPath 'Summary/PhaseDependentAnalyses.mat'],'out') 
+
+
+%%
+
 % %%
 % % circularStatsByCond       = cell(nSubjs,2);
 % % HitsFixedEffects        = []; 
