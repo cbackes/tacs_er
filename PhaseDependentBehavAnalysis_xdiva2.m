@@ -4,7 +4,7 @@ dataPath    = '~/Google Drive/Research/tACS/tACS_ER_task/data/tacs_enc_xdiva/';
 load([dataPath 'Summary/BehavSummary.mat']) 
 addpath CircStats
 %%
-nSubjs =25;
+nSubjs =30;
 
 out                         = [];
 out.nEncTrials              = 300;
@@ -33,7 +33,7 @@ out.datMatColumnNames      = ...
 % 11th   column: reaction times on memory decision
 % 12th  column: position of item at retrieval
 % 13th  column: confidence weighted phase trial vectors conf*exp(1j*phase)
-% 13th  column: -log10(RT) weighted phase trial vectors rt*exp(1j*phase)
+% 14th  column: -log10(RT) weighted phase trial vectors rt*exp(1j*phase)
 
 out.datMat                 =  nan(out.nSubjs,out.nEncTrials,numel(out.datMatColumnNames));
 out.datMat(:,:,1)          =  behav_out.Trials.StimTypeEnc;
@@ -87,21 +87,6 @@ for ss = 1:out.nSubjs
     out.datMat(ss,:,7)      = behav_out.retSubj{ss}.Hits(out.RetIDsAtEnc(ss,:));   % hits IDs at encoding
     out.datMat(ss,:,8)      = behav_out.retSubj{ss}.Misses(out.RetIDsAtEnc(ss,:)); % miss IDs at encoding
     
-    % Get true phase for Hits and Misses
-    out.HitMissPhases{ss,1} = out.EventPhase(ss,out.datMat(ss,:,7)==1);    
-    out.HitMissPhases{ss,2} = out.EventPhase(ss,out.datMat(ss,:,8)==1);    
-    
-    % Get phase condition for Hits and Misses
-    out.HitMissPhaseCond{ss,1} = out.EventPhaseCond(ss,out.datMat(ss,:,7)==1);    
-    out.HitMissPhaseCond{ss,2} = out.EventPhaseCond(ss,out.datMat(ss,:,8)==1);    
-        % Get Mean Phase and Mean Vector length
-    for jj = 1:2        
-        x = exp(1i*out.HitMissPhases{ss,jj}');
-        xm = mean(x);
-        out.HitMissMePhase(ss,jj) = angle(xm);
-        out.HitMissAbPhase(ss,jj) = abs(xm);
-    end
-
     % Get Confidence and assign sign based on hit/miss
     Confidence                  = behav_out.retSubj{ss}.Confidence;   
     Confidence(Confidence==0)   = nan;
@@ -110,12 +95,116 @@ for ss = 1:out.nSubjs
     out.datMat(ss,out.datMat(ss,:,8)==1,10) = -1*out.datMat(ss,out.datMat(ss,:,8)==1,10);
     
     out.datMat(ss,:,13) = out.datMat(ss,:,9).*exp(1i*out.datMat(ss,:,6));
+    
+    % Weight Phases by RT
+    out.datMat(ss,:,14) = -log10(out.datMat(ss,:,11)).*exp(1i*out.datMat(ss,:,6));
+    
+    % Get phases per confidence
+    for co =1:3
+        trials = out.datMat(ss,:,9)==co;
+        x = exp(1j*out.EventPhase(ss,trials));
+        x(isnan(x))=[];
+        out.ConfByPhaseMeVec(ss,co) = angle(mean(x));
+        out.ConfByPhaseAbVec(ss,co) = abs(mean(x));
+        [~,out.ConfByPhaseRStatVec(ss,co)] = circ_rtest(angle(x));
+    end
+    
+    % Get true phase for Hits and Misses
+    out.HitMissPhases{ss,1} = out.EventPhase(ss,out.datMat(ss,:,7)==1);    
+    out.HitMissPhases{ss,2} = out.EventPhase(ss,out.datMat(ss,:,8)==1);    
+    
+    % Get phase condition for Hits and Misses
+    out.HitMissPhaseCond{ss,1} = out.EventPhaseCond(ss,out.datMat(ss,:,7)==1);    
+    out.HitMissPhaseCond{ss,2} = out.EventPhaseCond(ss,out.datMat(ss,:,8)==1);    
+    % Get Mean Phase and Mean Vector length
+    for jj = 1:2        
+        x = exp(1i*out.HitMissPhases{ss,jj}');
+        xm = mean(x);
+        out.HitMissMePhase(ss,jj) = angle(xm);
+        out.HitMissAbPhase(ss,jj) = abs(xm);
+    end
+    % Hit/Miss distance from uniform   
+    [~,out.HitMiss_DistFromUniform(ss,1)]   = circ_rtest(out.HitMissPhases{ss,1});
+    [~,out.HitMiss_DistFromUniform(ss,2)]   = circ_rtest(out.HitMissPhases{ss,2});
+    
+    % hit/miss difference in distributions
+    [~,k]=circ_kuipertest(out.HitMissPhases{ss,1}',out.HitMissPhases{ss,2}');
+    out.HitMiss_DistDiff(ss) = k;
+    
+    % Get Mean Phases weighted by confidence.
     for jj=1:2
         trials = squeeze(out.datMat(ss,:,6+jj))==1;
-        x = mean(out.datMat(ss,trials,13),'omitnan');
-        out.HitMissCWMePhase(ss,jj) = angle(x);
-        out.HitMissCWAbPhase(ss,jj) = abs(x);
+        x = out.datMat(ss,trials,13);
+        x(isnan(x))=[];
+        out.HitMissCWMePhase(ss,jj) = angle(nanmean(x));
+        out.HitMissCWAbPhase(ss,jj) = abs(nanmean(x));
+        [~,out.HitMiss_CWDist(ss,jj)]   = circ_rtest(angle(x));
+    end        
+    
+    % Obtain mean phase and mean vector length per confidence level by
+    % subject.
+    for co=1:3
+        try
+            for jj=1:2
+                trials = squeeze(out.datMat(ss,:,9)==co & out.datMat(ss,:,6+jj)==1);
+                out.HitMissPhaseConf{ss,jj,co} = out.EventPhase(ss, trials);
+                x = exp(1i*out.HitMissPhaseConf{ss,jj,co}');        
+                out.HitMissMePhaseConf(ss,jj,co)= angle(nanmean(x));
+                out.HitMissAbPhaseConf(ss,jj,co)= abs(nanmean(x));
+                [~,out.HitMiss_DistFromUniformConf(ss,jj,co)]   = circ_rtest(angle(x));
+            end % for hits/misses            
+            [~,out.HitMissConf_DistDiff(ss,co)]  = circ_kuipertest(out.HitMissPhaseConf{ss,1,co}',out.HitMissPhaseConf{ss,2,co}');
+        catch
+        end
+    end % for confidence level.
+    
+    % low confidence hit miss
+    for jj=1:2
+        out.HitMissMePhaseLoConf(ss,jj)= out.HitMissMePhaseConf(ss,jj,1);
+        out.HitMissAbPhaseLoConf(ss,jj)= out.HitMissAbPhaseConf(ss,jj,1);
     end
+    
+    % Obtain mean phase and mean vector length for confidence >=2 mid/high
+    x=[];
+    for jj=1:2
+        trials = squeeze(out.datMat(ss,:,9)>1 & out.datMat(ss,:,6+jj)==1);
+        phases = out.EventPhase(ss, trials);
+        x{jj} = exp(1i*phases');        
+        out.HitMissMePhaseHMedConf(ss,jj)= angle(mean(x{jj}));
+        out.HitMissAbPhaseHMedConf(ss,jj)= abs(mean(x{jj}));
+        
+        [~,out.HitMiss_DistFromUniformHMedConf(ss,jj)]   = circ_rtest(angle(x{jj}));        
+    end % for hits/misses
+    [~,out.HitMissHMedConf_DistDiff(ss)]  = circ_kuipertest(angle(x{1}),angle(x{2}));
+
+    %----%----%----%----%----%----%----%----%----%----%----%----%----%----
+    %----%----%----%----%----%----%----%----%----%----%----%----%----%----
+    % Get proportion of hits and misses by phase
+    for pp = 1:5
+        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,7)==1;
+        out.nHitsByPhase(ss,pp)= sum(trials);
+         
+        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,8)==1;
+        out.nMissByPhase(ss,pp)= sum(trials);
+        out.HR_ByPhase(ss,pp) = out.nHitsByPhase(ss,pp)/(out.nMissByPhase(ss,pp) + out.nHitsByPhase(ss,pp));
+        
+        % for high and med confidence only.
+        trials = squeeze(out.datMat(ss,:,5)==pp & out.datMat(ss,:,9)>1 & out.datMat(ss,:,7)==1);
+        out.nHitsHMedConfByPhase(ss,pp)= sum(trials);
+
+        trials = squeeze(out.datMat(ss,:,5)==pp & out.datMat(ss,:,9)>1 & out.datMat(ss,:,8)==1);
+        out.nMissHMedConfByPhase(ss,pp)= sum(trials);
+        out.HR_HMedConf_ByPhase(ss,pp) = out.nHitsHMedConfByPhase(ss,pp)/(out.nMissHMedConfByPhase(ss,pp) + out.nHitsHMedConfByPhase(ss,pp));
+        
+        % for low confidence trials.
+        trials1 = squeeze(out.datMat(ss,:,5)==pp & out.datMat(ss,:,9)==1 & out.datMat(ss,:,7)==1);
+        trials2 = squeeze(out.datMat(ss,:,5)==pp & out.datMat(ss,:,9)==1 & out.datMat(ss,:,8)==1);
+        
+        out.HR_LoConf_ByPhase(ss,pp) = sum(trials1)/(sum(trials2)+sum(trials1));        
+    end
+    out.propHitsByPhase(ss,:) = out.nHitsByPhase(ss,:)/sum(out.nHitsByPhase(ss,:));
+    out.propMissByPhase(ss,:) = out.nMissByPhase(ss,:)/sum(out.nMissByPhase(ss,:));
+    
     % Get MemScore
     out.MemScore(ss)  = sum(out.datMat(ss,:,10),'omitnan');
     out.MemScoreM(ss) = mean(out.datMat(ss,:,10),'omitnan');
@@ -132,59 +221,6 @@ for ss = 1:out.nSubjs
         out.MemScoreByPhase(ss,pp)= mean(out.datMat(ss,trials,10),'omitnan');
         
     end
-    
-    % Obtain mean phase and mean vector length per confidence level by
-    % subject.
-    for co=1:3
-        try
-            for jj=1:2
-                out.HitMissPhaseConf{ss,jj,co} = out.EventPhase(ss, squeeze(out.datMat(ss,:,9)==co & out.datMat(ss,:,6+jj)==1));
-                x = mean(exp(1i*out.HitMissPhaseConf{ss,jj,co}'));        
-                out.HitMissMePhaseConf(ss,jj,co)= angle(x);
-                out.HitMissAbPhaseConf(ss,jj,co)= abs(x);
-            end % for hits/misses
-            out.HitMissCMTestConf(ss,co)  = circ_cmtest(out.HitMissPhaseConf{ss,1,co}',out.HitMissPhaseConf{ss,2,co}');
-        catch
-        end
-    end % for confidence level.
-
-    % Hit/Miss distance from uniform   
-    [~,out.HitMiss_DistFromUniform(ss,1)]   = circ_rtest(out.HitMissPhases{ss,1});
-    [~,out.HitMiss_DistFromUniform(ss,2)]   = circ_rtest(out.HitMissPhases{ss,2});
-    
-    % Confidence Distance from uniform
-    for co=1:3
-        [~,out.Conf_DistFromUniform(ss,co)] = circ_rtest(out.EventPhase(ss,out.datMat(ss,:,9)==co));
-    end
-    
-    % Confidence Distance from uniform for hits
-    for co=1:3
-        try
-        [~,out.HitsConf_DistFromUniform(ss,co)] =...
-            circ_rtest(out.EventPhase(ss,out.datMat(ss,:,9)==co & out.datMat(ss,:,7)==1));
-        catch
-        end
-    end
-    
-     % Confidence Distance from uniform for misses
-    for co=1:3
-        try
-        [~,out.MissConf_DistFromUniform(ss,co)] =...
-            circ_rtest(out.EventPhase(ss,out.datMat(ss,:,9)==co & out.datMat(ss,:,8)==1));
-        catch
-        end
-    end
-    
-    % Get proportion of hits and misses by phase
-    for pp = 1:5
-        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,7)==1;
-        out.nHitsByPhase(ss,pp)= sum(trials);
-         
-        trials = squeeze(out.datMat(ss,:,5)==pp)&out.datMat(ss,:,8)==1;
-        out.nMissByPhase(ss,pp)= sum(trials);
-    end
-    out.propHitsByPhase(ss,:) = out.nHitsByPhase(ss,:)/sum(out.nHitsByPhase(ss,:));
-    out.propMissByPhase(ss,:) = out.nMissByPhase(ss,:)/sum(out.nMissByPhase(ss,:));
 
     % RT analyses. 
     % Get RTs by phase and condition
@@ -195,8 +231,7 @@ for ss = 1:out.nSubjs
         out.HitMissRTsByPhase(ss,pp,2)= mean(-log10(out.datMat(ss,trials,11)));
     end
     
-    % Weight Phases by RT
-    out.datMat(ss,:,14) = -log10(out.datMat(ss,:,11)).*exp(1i*out.datMat(ss,:,6));
+    % Weight Phases by RT    
     for jj=1:2
         trials = squeeze(out.datMat(ss,:,6+jj))==1;
         x = mean(out.datMat(ss,trials,14),'omitnan');
@@ -205,18 +240,18 @@ for ss = 1:out.nSubjs
     end    
 end
 
+%%
 
-%% subject by subject phased shift
-th = mod(out.HitMissMePhase,2*pi);
-rho = out.HitMissAbPhase;
-z = rho.*exp(1i*th);
-zD = z(:,1)./z(:,2);
-
-out2 =[];
-out2.HMissTheta = mod(out.HitMissMePhase,2*pi);
-out2.HMissRho   =  out.HitMissAbPhase;
-out2.HMiss
-
+% subject by subject phased shift
+% th = mod(out.HitMissMePhase,2*pi);
+% rho = out.HitMissAbPhase;
+% z = rho.*exp(1i*th);
+% 
+% out2 =[];
+% out2.HMissTheta = mod(out.HitMissMePhase,2*pi);
+% out2.HMissRho   =  out.HitMissAbPhase;
+% out2.HMiss
+% 
 
 
 save([dataPath 'Summary/PhaseDependentAnalyses.mat'],'out') 

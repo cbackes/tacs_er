@@ -55,19 +55,23 @@ behav_out.retSummary.meanHit_RTs        = nan(nSubjs,1);
 behav_out.retSummary.meanCRs_RTs        = nan(nSubjs,1);
 behav_out.retSummary.meanFA_RTs         = nan(nSubjs,1);
 behav_out.retSummary.meanMiss_RTs       = nan(nSubjs,1);
-behav_out.retSummary.median_Hit_RTs     = nan(nSubjs,1);
-behav_out.retSummary.median_CRs_RTs     = nan(nSubjs,1);
-behav_out.retSummary.median_FA_RTs      = nan(nSubjs,1);
-behav_out.retSummary.median_Miss_RTs    = nan(nSubjs,1);
+behav_out.retSummary.medianHit_RTs     = nan(nSubjs,1);
+behav_out.retSummary.medianCRs_RTs     = nan(nSubjs,1);
+behav_out.retSummary.medianFA_RTs      = nan(nSubjs,1);
+behav_out.retSummary.medianMiss_RTs    = nan(nSubjs,1);
 behav_out.retSummary.HitCRs_RTs_TVals   = nan(nSubjs,1);
 
-% confidence summaries
-behav_out.retSummary.dPrimeConf         = nan(nSubjs,3);
-behav_out.retSummary.dPrimeConf_C       = nan(nSubjs,3);
-behav_out.retSummary.meanAccuracyByConf = nan(nSubjs,3);
-behav_out.retSummary.nRespByConf        = nan(nSubjs,3);
-behav_out.retSummary.nH_nMiss_nFA_nCRs  = nan(nSubjs,3,4);
 
+% confidence summaries
+behav_out.retSummary.dPrimeConf             = nan(nSubjs,3);
+behav_out.retSummary.dPrimeConf_C           = nan(nSubjs,3);
+behav_out.retSummary.meanAccuracyByConf     = nan(nSubjs,3);
+behav_out.retSummary.nRespByConf            = nan(nSubjs,3);
+behav_out.retSummary.nH_nMiss_nFA_nCRs      = nan(nSubjs,3,4);
+behav_out.retSummary.medianHit_RTsConf     = nan(nSubjs,3);
+behav_out.retSummary.medianCRs_RTsConf         = nan(nSubjs,3);
+behav_out.retSummary.medianFA_RTsConf          = nan(nSubjs,3);
+behav_out.retSummary.medianMiss_RTsConf        = nan(nSubjs,3);
 
 % trials
 behav_out.EncRet = [];
@@ -135,12 +139,17 @@ for ss = 1:nSubjs
         behav_out.retSummary.meanFA_RTs(ss)             = behav_out.retSubj{ss}.FA_RTsStats.meanRT;
         behav_out.retSummary.meanMiss_RTs(ss)           = behav_out.retSubj{ss}.Misses_RTsStats.meanRT;
         
-        behav_out.retSummary.median_Hit_RTs(ss)         = behav_out.retSubj{ss}.Hit_RTsStats.medianRT;
-        behav_out.retSummary.median_CRs_RTs(ss)         = behav_out.retSubj{ss}.CRs_RTsStats.medianRT;
-        behav_out.retSummary.median_FA_RTs(ss)          = behav_out.retSubj{ss}.FA_RTsStats.medianRT;
-        behav_out.retSummary.median_Miss_RTs(ss)        = behav_out.retSubj{ss}.Misses_RTsStats.medianRT;
-        
+        behav_out.retSummary.medianHit_RTs(ss)         = behav_out.retSubj{ss}.Hit_RTsStats.medianRT;
+        behav_out.retSummary.medianCRs_RTs(ss)         = behav_out.retSubj{ss}.CRs_RTsStats.medianRT;
+        behav_out.retSummary.medianFA_RTs(ss)          = behav_out.retSubj{ss}.FA_RTsStats.medianRT;
+        behav_out.retSummary.medianMiss_RTs(ss)        = behav_out.retSubj{ss}.Misses_RTsStats.medianRT;
         behav_out.retSummary.HitCRs_RTs_TVals(ss)       = behav_out.retSubj{ss}.HitCRs_RTs.tstat;
+        
+        behav_out.retSummary.medianHit_RTsConf(ss,:)        = [behav_out.retSubj{ss}.Hit_RTsStatsConf.medianRT];
+        behav_out.retSummary.medianCRs_RTsConf(ss,:)       = [behav_out.retSubj{ss}.CRs_RTsStatsConf.medianRT];
+        behav_out.retSummary.medianFA_RTsConf(ss,:)        = [behav_out.retSubj{ss}.FA_RTsStatsConf.medianRT];
+        behav_out.retSummary.medianMiss_RTsConf(ss,:)      = [behav_out.retSubj{ss}.Misses_RTsStatsConf.medianRT];
+        
         
         % trials
         behav_out.EncRet.EncHitTrialIDs{ss}         = behav_out.retSubj{ss}.EncHitTrialIDs;
@@ -291,17 +300,29 @@ for cc = 1:3
     ret.FARateByConf(cc)          = binOut.Cond2FAR;
     ret.MissRateByConf(cc)        = binOut.Cond1FAR;
         
-    x1           = sum(binOut.Cond1Correct); % # hits
-    x2           = sum(binOut.Cond1InCorrect); % # misses
-    x3           = sum(binOut.Cond2InCorrect); % # FA
-    x4           = sum(binOut.Cond2Correct); % # CRs
+    x1           = binOut.Cond1Correct; % hits
+    x1s          = sum(x1);
+    x2           = binOut.Cond1InCorrect; % misses
+    x2s          = sum(x2); 
+    x3           = binOut.Cond2InCorrect; % # FA
+    x3s          = sum(x3); % # FA
+    x4           = binOut.Cond2Correct; % # CRs
+    x4s          = sum(x4);
     
+    rts = ret.RTs(ret.Confidence==cc);
     % #s of hits/misses/fa/CRs
-    ret.nH_nMiss_nFA_nCRs(cc,:)   = [x1 x2 x3 x4];    
+    ret.nH_nMiss_nFA_nCRs(cc,:)   = [x1s x2s x3s x4s];    
     
     % compute dprime
     [ret.dPrimeConf(cc), ret.dPrimeConf_C(cc)] = ...
-    calc_dPrime(x1,x2,x3,x4);
+    calc_dPrime(x1s,x2s,x3s,x4s);
+
+    % get RT stats per confidence.
+    ret.Hit_RTsStatsConf(cc)     = analyzeRTs(rts(x1));
+    ret.CRs_RTsStatsConf(cc)     = analyzeRTs(rts(x2));
+    ret.Misses_RTsStatsConf(cc)  = analyzeRTs(rts(x3));
+    ret.FA_RTsStatsConf(cc)      = analyzeRTs(rts(x4));
+    
 
 end
 
