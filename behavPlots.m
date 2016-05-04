@@ -17,6 +17,7 @@ Dstrs   = {'dPrime','Face_dPrime','Scene_dPrime',...
     'dPrime_C','Face_dPrime_C','Scene_dPrime_C'};
 
 Dstrs2  = {'dP', 'Face dP', 'Scn dP', 'C', 'Face C', 'Scn C'};
+Dstrs3  = {'dP', 'FaceDP', 'ScnDP', 'C', 'FaceC', 'ScnC'};
 nD = numel(Dstrs);
 D       = zeros(nSubjs,nD);
 for ii = 1:nD
@@ -47,8 +48,7 @@ for ii=1:nD
         s.MarkerEdgeAlpha=0.6;
         s.SizeData          = 50;
         s.MarkerEdgeColor = [0.45 [0.75,0.9]*ss/nSubjs];
-        s.MarkerFaceColor = [0.45 [0.75,0.9]*ss/nSubjs];
-        
+        s.MarkerFaceColor = [0.45 [0.75,0.9]*ss/nSubjs];        
     end
 
     set(gca,'fontsize',20,'xTick','') 
@@ -65,6 +65,9 @@ for ii=1:nD
     set(gca,'LineWidth',2)
 end
 print(gcf,'-dpdf',['../plots/xdiva/dPrimes' SubjSelectStr])
+disp(array2table(mean(D),'variablenames',Dstrs3))
+[~,p,~,t]=ttest(D(:,2),D(:,3));
+disp(table(t.tstat,p,'rownames',{'Face vs Scn DP'}))
 
 %% Confidence
 conf = behav_out.retSummary.meanAccuracyByConf(subjs,:);
@@ -89,7 +92,7 @@ print(gcf,'-dpdf',['../plots/xdiva/ConfidenceAcc' SubjSelectStr])
 % dPrime by confidence:
 
 DPC = behav_out.retSummary.dPrimeConf(subjs,:);
-figure(1); clf;
+figure(2); clf;
 set(gcf,'paperpositionmode','auto','color','white')
 set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
 set(gcf,'position',[50,500,500,300])
@@ -106,8 +109,18 @@ ylabel(' dPrime ')
 
 print(gcf,'-dpdf',['../plots/xdiva/Confidence_dPrime' SubjSelectStr])
 
+disp(array2table(mean(DPC),'variablenames',{'Low','Med','High'}))
+
+[~,p1,~,t1]=ttest(DPC(:,2),DPC(:,1));
+[~,p2,~,t2]=ttest(DPC(:,3),DPC(:,2));
+[~,p3,~,t3]=ttest(DPC(:,3),DPC(:,1));
+p = [p1;p2;p3];
+t = [t1.tstat;t2.tstat;t3.tstat]; 
+disp(table(t,p,'rownames',{'Mid>Low','Hi>Mid','Hi>Lo'}))
+
+anova1(DPC(:),[ones(nSubjs,1);2*ones(nSubjs,1);3*ones(nSubjs,1)])
 %% RTs
-strs    = {'medianHit_RTs','medianMiss_RTs','medianCRs_RTs','medianFA_RTs'};
+strs    = {'medianHit_RTs','medianMiss_RTs','medianFA_RTs','medianCRs_RTs'};
 strs2   = {'Hits','Misses','FA','CRs'};
 nRTConds = numel(strs);
 
@@ -159,6 +172,15 @@ for ii=1:nRTConds
 end
 
 print(gcf,'-dpdf',['../plots/xdiva/RTs' SubjSelectStr])
+
+disp(array2table(mean(RTs),'variablenames',strs2))
+
+[~,p1,~,t1]=ttest(RTs(:,1),RTs(:,2));
+[~,p2,~,t2]=ttest(RTs(:,1),RTs(:,3));
+[~,p3,~,t3]=ttest(RTs(:,1),RTs(:,4));
+p = [p1;p2;p3];
+t = [t1.tstat;t2.tstat;t3.tstat]; 
+disp(table(t,p,'rownames',{'HvsM','HvFA','HvCRs'}))
 
 %% RTs by Confidence 
 strs    = {'medianHit_RTsConf','medianMiss_RTsConf','medianCRs_RTsConf','medianFA_RTsConf'};
@@ -305,10 +327,8 @@ print(gcf, '-dpdf',[ '../plots/xdiva/H-MPropByPhase' SubjSelectStr]);
 %% Hit Rate by phase
 
 X = out.HR_ByPhase(subjs,:);
-
-t = linspace(0,1,1000);
-x = cos(2*pi*t-pi);
-xa = angle(hilbert(x));
+xa = linspace(0,2*pi,1000);
+x = cos(xa);
 
 % Hits
 figure(4); clf;
@@ -318,11 +338,12 @@ set(gcf,'position',[100,100,600,400])
 
 a2 = axes('units','points','position',[0.12*600 0.1*400 0.8*600 0.15*400]);
 axes(a2)
-plot((xa+pi)./pi*180,x,'k','linewidth',4)
+plot(xa./pi*180,x,'k','linewidth',4)
 axis tight; 
 set(gca,'ytick',[],'ycolor','w','fontsize',16,'box','off','lineWidth',2)
-set(gca,'xtick',[0:72:360])
+set(gca,'xtick',[36:72:360])
 xlabel(' Encoding Phase (deg)')
+xlim([-1 361])
 grid on
 
 a1 = axes('position', [0.12 0.3 0.8 0.6]);
@@ -331,18 +352,18 @@ plot([36:72:360],X','-','color',[180 180 180]/255)
 plot([36:72:360],mean(X), 'color',[100 100 100]/255,'linewidth',5)
 set(gca,'fontsize',16,'box','off','lineWidth',2)
 set(gca,'xtick',[36:72:360],'xTickLabel','')
-xlim([0 360])
+xlim([-1 361])
 ylim([0 1])
 ylabel(' Hit Rate ' )
-
 print(gcf, '-dpdf', ['../plots/xdiva/HitsRatepByPhase' SubjSelectStr]);
-
+%
+% mean Vectors
 Z=X.*exp(1j*repmat([36:72:360]./180*pi,[nSubjs,1]));
 mZ = mean(Z,2);
 th = mod(angle(mZ),2*pi); rho = abs(mZ);
 color = [180 180 180]/255;
-han = PolarPlot(th,rho,color);
-
+markerSize=behav_out.retSummary.dPrime(subjs)*150;
+han = PolarPlot(th,rho,color,markerSize);
 print(han, '-dpdf', ['../plots/xdiva/HitsRateMeanVec' SubjSelectStr]);
 
 % 
@@ -373,9 +394,8 @@ print(han, '-dpdf', ['../plots/xdiva/HitRateMeanVecScatterDprime' SubjSelectStr]
 
 %% MemScore by Phase
 
-t = linspace(0,1,1000);
-x = cos(2*pi*t-pi);
-xa = angle(hilbert(x));
+xa = linspace(0,2*pi,1000);
+x = cos(xa);
 
 X = out.MemScoreByPhase(subjs,:);
 figure(7); clf;
@@ -385,11 +405,12 @@ set(gcf,'position',[100,100,600,400])
 
 a2 = axes('units','points','position',[0.12*600 0.1*400 0.8*600 0.15*400]);
 axes(a2)
-plot((xa+pi)./pi*180,x,'k','linewidth',4)
+plot(xa/pi*180,x,'k','linewidth',4)
 axis tight; 
 set(gca,'ytick',[],'ycolor','w','fontsize',16,'box','off','lineWidth',2)
-set(gca,'xtick',[0:72:360])
+set(gca,'xtick',[36:72:360])
 xlabel(' Encoding Phase (deg)')
+xlim([-1 361])
 grid on
 
 a1 = axes('position', [0.12 0.3 0.8 0.6]);
@@ -399,7 +420,7 @@ plot([36:72:360],Xm','-','color',[180 180 180]/255)
 plot([36:72:360],mean(Xm), 'color',[100 100 100]/255,'linewidth',5)
 set(gca,'fontsize',16,'box','off','lineWidth',2)
 set(gca,'xtick',[36:72:360],'xTickLabel','')
-xlim([0 360])
+xlim([-1 361])
 ylim([-1 1])
 ylabel(' MemScore ' )
 
@@ -410,6 +431,7 @@ Z=X.*exp(1j*repmat([36:72:360]./180*pi,[nSubjs,1]));
 mZ = mean(Z,2);
 th = mod(angle(mZ),2*pi); rho = abs(mZ);
 color = [180 180 180]/255;
+markerSize=behav_out.retSummary.dPrime(subjs)*150;
 han = PolarPlot(th,rho,color);
 print(han, '-dpdf', ['../plots/xdiva/MemScoreMeanVec' SubjSelectStr]);
 

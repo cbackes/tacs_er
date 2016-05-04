@@ -19,8 +19,8 @@ end
 
 han=figure(); clf;
 set(gcf,'paperpositionmode','auto','color','white')
-set(gcf,'paperUnits','points','papersize',[800 800],'paperposition',[0 0 800 800])
-set(gcf,'position',[110,100,500,500])
+set(gcf,'paperUnits','points','papersize',[400 400],'paperposition',[0 0 400 400])
+set(gcf,'position',[75,75,250,250])
 hold on
 
 dX = abs(max(x)-min(x));
