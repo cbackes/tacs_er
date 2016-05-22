@@ -14,7 +14,7 @@ end
 if ~isfield(opts,'markerSize')
     markerSize = ones(1,nCategories)*100;
 else
-    markersize = opts.markersize;
+    markerSize = opts.markerSize;
 end
 
 han=figure(); clf;
@@ -23,10 +23,14 @@ set(gcf,'paperUnits','points','papersize',[400 400],'paperposition',[0 0 400 400
 set(gcf,'position',[75,75,250,250])
 hold on
 
-dX = abs(max(x)-min(x));
-xLims = [min(x)-dX/10 max(x)+dX/10];
+maxX = max(x(:)); minX = min(x(:));
+maxY = max(y(:)); minY = min(y(:));
+
+dX = abs(maxX-minX);
+dY = abs(maxY-minY);
+xLims = [minX-dX/10 maxX+dX/10];
 xlim(xLims)
-yLims = [min(y)-dX/10 max(y)+dX/10];
+yLims = [minY-dY/10 maxY+dY/10];
 ylim(yLims)
 % lCol = [0.9 0.9 0.9];
 % plot(xLims,[0 0],'color',lCol,'linewidth',2);
@@ -34,6 +38,7 @@ ylim(yLims)
 %
 
 for jj = 1:nCategories
+    
     s=scatter(x(:,jj),y(:,jj), 'o');
     s.MarkerFaceAlpha   = 0.7;
     s.MarkerEdgeAlpha   = 0.7;
@@ -43,8 +48,8 @@ for jj = 1:nCategories
     
     if isfield(opts,'polyfitN')
         n = opts.polyfitN;
-        P = polyfit(x,y,n);
-        xx = linspace(min(x),max(x),100);
+        P = polyfit(x(:,jj),y(:,jj),n);
+        xx = linspace(min(x(:,jj)),max(x(:,jj)),100);
         yy = zeros(size(xx));
         for ii = 1:(n+1)
             yy = yy+P(ii)*xx.^(n-ii+1);

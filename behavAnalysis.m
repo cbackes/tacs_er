@@ -33,14 +33,16 @@ behav_out.retSubj = cell(nSubjs,1);
 
 % encoding stats pre-allocation
 behav_out.encSummary = [];
-behav_out.encSummary.meanAcc        = nan(nSubjs,1);
-behav_out.encSummary.FaceHR         = nan(nSubjs,1);
-behav_out.encSummary.SceneHR        = nan(nSubjs,1);
-behav_out.encSummary.meanRTs        = nan(nSubjs,1);
-behav_out.encSummary.meanFaceRTs    = nan(nSubjs,1);
-behav_out.encSummary.meanSceneRTs   = nan(nSubjs,1);
+behav_out.encSummary.goodSubj           = nan(nSubjs,1);
+behav_out.encSummary.meanAcc            = nan(nSubjs,1);
+behav_out.encSummary.FaceHR             = nan(nSubjs,1);
+behav_out.encSummary.SceneHR            = nan(nSubjs,1);
+behav_out.encSummary.medianRTs          = nan(nSubjs,1);
+behav_out.encSummary.medianFaceRTs      = nan(nSubjs,1);
+behav_out.encSummary.medianSceneRTs     = nan(nSubjs,1);
 behav_out.encSummary.FaceScene_RTs_TVals = nan(nSubjs,1);
-
+        
+        
 % retrieval stats pre-allocation
 behav_out.retSummary =[];
 behav_out.retSummary.dPrime             = nan(nSubjs,1);
@@ -91,29 +93,46 @@ behav_out.Trials.EncStimIDAtRet         = nan(nSubjs,nRetTrials);
 
 for ss = 1:nSubjs
     try
-        load([dataPath 's' num2str(ss) '/tacs_er.encoding.mat'])
-        behav_out.encSubj{ss}                   = EncAnalysisBySubj(enc_out);
-        behav_out.encSummary.meanAcc(ss)        = behav_out.encSubj{ss}.meanAccuracy;
-        behav_out.encSummary.FaceHR(ss)         = behav_out.encSubj{ss}.FaceHitRate;
-        behav_out.encSummary.SceneHR(ss)        = behav_out.encSubj{ss}.SceneHitRate;
-        behav_out.encSummary.meanRTs(ss)        = behav_out.encSubj{ss}.RTsStats.meanRT;
-        behav_out.encSummary.meanFaceRTs(ss)    = behav_out.encSubj{ss}.FaceRTsStats.meanRT;
-        behav_out.encSummary.meanSceneRTs(ss)   = behav_out.encSubj{ss}.SceneRTsStats.meanRT;
+        if strcmp(expt,'tacs_enc_xdiva')        
+            load([dataPath 's' num2str(ss) '/encData_xdiva.mat'])
+            load([dataPath 's' num2str(ss) '/tacs_er_xdiva.task.mat'])
+            behav_out.encSubj{ss}               = EncAnalysisBySubj_xdiva(enc_out,tacs_er);       
+        else
+            load([dataPath 's' num2str(ss) '/tacs_er.encoding.mat'])
+             behav_out.encSubj{ss}              = EncAnalysisBySubj(enc_out);       
+        end
+        behav_out.encSummary.goodSubj(ss)           = behav_out.encSubj{ss}.goodSubj;
+        behav_out.encSummary.meanAcc(ss)            = behav_out.encSubj{ss}.meanAccuracy;
+        behav_out.encSummary.FaceHR(ss)             = behav_out.encSubj{ss}.FaceHitRate;
+        behav_out.encSummary.SceneHR(ss)            = behav_out.encSubj{ss}.SceneHitRate;
+        behav_out.encSummary.medianRTs(ss)          = behav_out.encSubj{ss}.RTsStats.medianRT;
+        behav_out.encSummary.medianFaceRTs(ss)      = behav_out.encSubj{ss}.FaceRTsStats.medianRT;
+        behav_out.encSummary.medianSceneRTs(ss)     = behav_out.encSubj{ss}.SceneRTsStats.medianRT;
         behav_out.encSummary.FaceScene_RTs_TVals(ss) ...
             = behav_out.encSubj{ss}.RTsStats_FvsSc.tstat;
+        behav_out.encSummary.HRByPhase(ss,:,:)          = behav_out.encSubj{ss}.HRbyPhase;        
+        behav_out.encSummary.medianRTsByPhase(ss,:,:)   = behav_out.encSubj{ss}.medianRTsByPhase;
         
-    catch msg
+    catch msg   
+        fprintf('issues processing subject %i \n',ss)
     end
     try
-        %load([dataPath 's' num2str(ss+1) '/tacs_er.test.mat'])
-        load([dataPath 's' num2str(ss) '/tacs_enc_xdiva.test.mat'])
+        
+        if strcmp(expt,'tacs_enc_xdiva')
+            load([dataPath 's' num2str(ss) '/tacs_enc_xdiva.test.mat'])
+            behav_out.Trials.EncTrialPhaseCond(ss,:)        = ret_out.expInfo.EncTrialPhaseConds;
+            behav_out.Trials.EncTrialPhase(ss,:)            = ret_out.expInfo.EncTrialPhase;
+            behav_out.Trials.EncCondAtRet(ss,:)             = ret_out.expInfo.EncCondAtRet;
+            
+        elseif strcmp(expt,'tacs_enc')
+            load([dataPath 's' num2str(ss) '/tacs_er.test.mat'])
+            load([dataPath 's' num2str(ss) '/EventsPhase.mat']);
+            behav_out.Trials.EncTrialPhase(ss,:) = out.TrueAngleStims;
+        end
         behav_out.retSubj{ss}                           = RetAnalysisBySubj(ret_out);
         
-        behav_out.Trials.EncTrialPhaseCond(ss,:)        = ret_out.expInfo.EncTrialPhaseConds;
-        behav_out.Trials.EncTrialPhase(ss,:)            = ret_out.expInfo.EncTrialPhase;
-        behav_out.Trials.EncCondAtRet(ss,:)             = ret_out.expInfo.EncCondAtRet;
-
-        behav_out.Trials.EncStimIDAtRet(ss,:)           = behav_out.retSubj{ss}.EncStimIDAtRet;        
+        % IDs of test items during encoding.
+        behav_out.Trials.EncStimIDAtRet(ss,:)           = behav_out.retSubj{ss}.EncStimIDAtRet;
         [s,i]                                           = sort(behav_out.Trials.EncStimIDAtRet(ss,:));
         behav_out.Trials.RetStimIDAtEnc(ss,:)           = i(s>0);
         behav_out.Trials.StimTypeEnc(ss,:)              = ret_out.expInfo.EncStimType;
@@ -125,9 +144,14 @@ for ss = 1:nSubjs
         behav_out.retSummary.Face_dPrime_C(ss)          = behav_out.retSubj{ss}.Face_dPrime_C;
         behav_out.retSummary.Scene_dPrime(ss)           = behav_out.retSubj{ss}.Scene_dPrime;
         behav_out.retSummary.Scene_dPrime_C(ss)         = behav_out.retSubj{ss}.Scene_dPrime_C;
-        behav_out.retSummary.meanAccuracyByConf(ss,:)   = behav_out.retSubj{ss}.meanAccuracyByConf;        
+        behav_out.retSummary.meanAccuracyByConf(ss,:)   = behav_out.retSubj{ss}.meanAccuracyByConf;
         behav_out.retSummary.dPrimeConf(ss,:)           = behav_out.retSubj{ss}.dPrimeConf;
         behav_out.retSummary.dPrimeConf_C(ss,:)         = behav_out.retSubj{ss}.dPrimeConf_C;
+        
+        behav_out.retSummary.Face_dPrimeConf(ss,:)      = behav_out.retSubj{ss}.Face_dPrimeConf;
+        behav_out.retSummary.Face_dPrimeConf_C(ss,:)    = behav_out.retSubj{ss}.Face_dPrimeConf_C;
+        behav_out.retSummary.Scene_dPrimeConf(ss,:)     = behav_out.retSubj{ss}.Scene_dPrimeConf;
+        behav_out.retSummary.Scene_dPrimeConf_C(ss,:)   = behav_out.retSubj{ss}.Scene_dPrimeConf_C;
         
         % numbers of trials per conditions
         behav_out.retSummary.nH_nMiss_nFA_nCRs(ss,:,:)  = behav_out.retSubj{ss}.nH_nMiss_nFA_nCRs;
@@ -139,17 +163,16 @@ for ss = 1:nSubjs
         behav_out.retSummary.meanFA_RTs(ss)             = behav_out.retSubj{ss}.FA_RTsStats.meanRT;
         behav_out.retSummary.meanMiss_RTs(ss)           = behav_out.retSubj{ss}.Misses_RTsStats.meanRT;
         
-        behav_out.retSummary.medianHit_RTs(ss)         = behav_out.retSubj{ss}.Hit_RTsStats.medianRT;
-        behav_out.retSummary.medianCRs_RTs(ss)         = behav_out.retSubj{ss}.CRs_RTsStats.medianRT;
-        behav_out.retSummary.medianFA_RTs(ss)          = behav_out.retSubj{ss}.FA_RTsStats.medianRT;
-        behav_out.retSummary.medianMiss_RTs(ss)        = behav_out.retSubj{ss}.Misses_RTsStats.medianRT;
+        behav_out.retSummary.medianHit_RTs(ss)          = behav_out.retSubj{ss}.Hit_RTsStats.medianRT;
+        behav_out.retSummary.medianCRs_RTs(ss)          = behav_out.retSubj{ss}.CRs_RTsStats.medianRT;
+        behav_out.retSummary.medianFA_RTs(ss)           = behav_out.retSubj{ss}.FA_RTsStats.medianRT;
+        behav_out.retSummary.medianMiss_RTs(ss)         = behav_out.retSubj{ss}.Misses_RTsStats.medianRT;
         behav_out.retSummary.HitCRs_RTs_TVals(ss)       = behav_out.retSubj{ss}.HitCRs_RTs.tstat;
         
-        behav_out.retSummary.medianHit_RTsConf(ss,:)        = [behav_out.retSubj{ss}.Hit_RTsStatsConf.medianRT];
-        behav_out.retSummary.medianCRs_RTsConf(ss,:)       = [behav_out.retSubj{ss}.CRs_RTsStatsConf.medianRT];
-        behav_out.retSummary.medianFA_RTsConf(ss,:)        = [behav_out.retSubj{ss}.FA_RTsStatsConf.medianRT];
-        behav_out.retSummary.medianMiss_RTsConf(ss,:)      = [behav_out.retSubj{ss}.Misses_RTsStatsConf.medianRT];
-        
+        behav_out.retSummary.medianHit_RTsConf(ss,:)    = [behav_out.retSubj{ss}.Hit_RTsStatsConf.medianRT];
+        behav_out.retSummary.medianCRs_RTsConf(ss,:)    = [behav_out.retSubj{ss}.CRs_RTsStatsConf.medianRT];
+        behav_out.retSummary.medianFA_RTsConf(ss,:)     = [behav_out.retSubj{ss}.FA_RTsStatsConf.medianRT];
+        behav_out.retSummary.medianMiss_RTsConf(ss,:)   = [behav_out.retSubj{ss}.Misses_RTsStatsConf.medianRT];
         
         % trials
         behav_out.EncRet.EncHitTrialIDs{ss}         = behav_out.retSubj{ss}.EncHitTrialIDs;
@@ -161,10 +184,10 @@ for ss = 1:nSubjs
         behav_out.EncRet.EncMissRTs{ss}             = behav_out.retSubj{ss}.EncMissRTs;
         
     catch msg
+        disp(msg)
     end
     
 end
-
 save([dataPath '/Summary/BehavSummary'],'behav_out')
 end
 
@@ -175,7 +198,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
+% Encoding Analyses by subject
 function enc=EncAnalysisBySubj(enc_out)
 enc =[];
 enc.encCond = enc_out.exptInfo.EncStimType; % face/scene trials
@@ -189,7 +212,7 @@ cond2Key=enc_out.PresParams.RespToCond2;
 binOut = tabulateBinaryResponses(keyPress,enc.encCond,cond1Key,cond2Key);
 
 enc.CorrectResp     = binOut.Correct;
-enc.InCorrectResp   = binOut.Correct;
+enc.InCorrectResp   = binOut.InCorrect;
 enc.meanAccuracy    = binOut.mACC;
 enc.FaceHitRate     = binOut.Cond1HR;
 enc.SceneHitRate    = binOut.Cond2HR;
@@ -208,6 +231,84 @@ enc.RTsStats_FvsSc.tstat=a2.tstat;
 
 end
 
+function enc = EncAnalysisBySubj_xdiva(enc_out,tacs_er)
+enc =[];
+enc.goodSubj = mean(isnan(enc_out.dataMat(:,5)))<0.5; % liberal threshold for responses.
+enc.encCond  = tacs_er.EncStimType; % face/scene trials
+
+
+% Get Response IDs based on Subjects Responses. Categorization task should be
+% close to perfect performance.
+enc.StimIDResp1 = mode(enc.encCond(enc_out.dataMat(:,strcmp(enc_out.colNames,'Resp1'))==1));
+enc.StimIDResp2 = mode(enc.encCond(enc_out.dataMat(:,strcmp(enc_out.colNames,'Resp2'))==1));
+
+enc.encResp  = enc_out.dataMat(:,strcmp(enc_out.colNames,'Resp1'))*enc.StimIDResp1 + ...
+                enc_out.dataMat(:,strcmp(enc_out.colNames,'Resp2'))*enc.StimIDResp2;
+
+
+if ~(isnan(enc.StimIDResp1) || isnan(enc.StimIDResp2))
+    enc.encRespTab = array2table(crosstab([nan ;enc.encCond],[0;enc.encResp]),'VariableNames', ...
+    {'NoResp','FaceResp','SceneResp'},'rowNames',{'FaceStim','SceneStim'});
+else
+     enc.encRespTab = array2table(nan(2,3),'VariableNames', ...
+    {'NoResp','FaceResp','SceneResp'},'rowNames',{'FaceStim','SceneStim'});
+end
+    
+deltaTime = (tacs_er.PresParams.VideoFrameDurSecs*2)*(tacs_er.EncTrialPhaseConds-1);
+enc.RTs     = enc_out.dataMat(:,strcmp(enc_out.colNames,'RTs'))-deltaTime;
+
+% get simple responses information
+binOut = tabulateBinaryResponses2(enc.encResp,enc.encCond);
+
+enc.CorrectResp     = binOut.Correct;
+enc.InCorrectResp   = binOut.InCorrect;
+enc.meanAccuracyAll = binOut.mACC;
+enc.meanAccuracy    = mean(binOut.Correct(~binOut.noResp));
+enc.FaceHitRate     = enc.encRespTab.FaceResp(1)/sum(enc.encRespTab.FaceResp);
+enc.SceneHitRate    = enc.encRespTab.SceneResp(2)/sum(enc.encRespTab.SceneResp);
+enc.FaceCorrectResp = binOut.Cond1Correct;
+enc.SceneCorrectResp= binOut.Cond2Correct;
+enc.otherEncInfo    = binOut;
+
+enc.HRbyPhase           = zeros(2,tacs_er.nEncPhases); %  faces, scenes
+
+for ii = 1:tacs_er.nEncPhases    
+    trials = tacs_er.EncTrialPhaseConds==ii & ~(enc.encResp==0);        
+    temp = tabulateBinaryResponses2(enc.encResp(trials),enc.encCond(trials)); 
+    enc.HRbyPhase(1,ii) = temp.mACC;
+    enc.HRbyPhase(2,ii) = temp.Cond1HR;
+    enc.HRbyPhase(3,ii) = temp.Cond2HR;
+end
+% RT info (for correct)
+enc.RTsStats        = analyzeRTs(enc.RTs(enc.CorrectResp));
+enc.FaceRTsStats    = analyzeRTs(enc.RTs(enc.FaceCorrectResp));
+enc.SceneRTsStats   = analyzeRTs(enc.RTs(enc.SceneCorrectResp));
+[~,a1,~,a2] = ttest2(enc.RTs(enc.FaceCorrectResp),enc.RTs(enc.SceneCorrectResp));
+enc.RTsStats_FvsSc.p=a1;
+enc.RTsStats_FvsSc.tstat=a2.tstat;
+
+enc.medianRTsByPhase    = zeros(3,tacs_er.nEncPhases); %  faces, scenes
+for ii = 1:tacs_er.nEncPhases        
+    trials = tacs_er.EncTrialPhaseConds==ii & ~(enc.encResp==0);  
+    enc.medianRTsByPhase(1,ii) = nanmedian(enc.RTs(trials));
+    for jj = 1:2
+        trials = tacs_er.EncTrialPhaseConds==ii & ~(enc.encResp==0) & (enc.encCond==jj);  
+        enc.medianRTsByPhase(jj+1,ii) = nanmedian(enc.RTs(trials));
+    end
+end
+
+%enc.PhaseRTAnova            = [];
+% [~,a,b]      = anova1(enc.RTs(~(enc.encResp==0)), ...
+%     tacs_er.EncTrialPhaseConds(~(enc.encResp==0)));
+% enc.PhaseRTAnova.anovaTable = a;
+% enc.PhaseRTAnova.groupIno   = b;
+% enc.PhaseRTAnova.FStat  = a{2,5};
+% enc.PhaseRTAnova.Pval   = a{2,6};
+
+
+end
+
+% Retrieval Analyses
 function ret=RetAnalysisBySubj(ret_out)
 
 ret = [];
@@ -289,9 +390,11 @@ ret.nRespByConf    = histc(ret.Confidence,1:3);
 % Tabulate Hits, FA, CRs and Misses as a function of confidence
 for cc = 1:3
     % get overall response information
-    binOut = tabulateBinaryResponses(keyPress(ret.Confidence==cc),...
-        1*ret.OldTrials(ret.Confidence==cc)+2*ret.NewTrials(ret.Confidence==cc)...
-        ,cond1Key,cond2Key);
+    trials = ret.Confidence==cc;
+    
+    binOut = tabulateBinaryResponses(keyPress(trials),...
+        1*ret.OldTrials(trials)+2*ret.NewTrials(trials),...
+        cond1Key,cond2Key);
     
     ret.meanAccuracyByConf(cc)    = binOut.mACC;
     
@@ -299,31 +402,38 @@ for cc = 1:3
     ret.CorrRejRateByConf(cc)     = binOut.Cond2HR;
     ret.FARateByConf(cc)          = binOut.Cond2FAR;
     ret.MissRateByConf(cc)        = binOut.Cond1FAR;
-        
-    x1           = binOut.Cond1Correct; % hits
-    x1s          = sum(x1);
-    x2           = binOut.Cond1InCorrect; % misses
-    x2s          = sum(x2); 
-    x3           = binOut.Cond2InCorrect; % # FA
-    x3s          = sum(x3); % # FA
-    x4           = binOut.Cond2Correct; % # CRs
-    x4s          = sum(x4);
     
-    rts = ret.RTs(ret.Confidence==cc);
+    x1           = binOut.Cond1Correct; % hits
+    x2           = binOut.Cond1InCorrect; % misses
+    x3           = binOut.Cond2InCorrect; % # FA
+    x4           = binOut.Cond2Correct; % # CRs
+
     % #s of hits/misses/fa/CRs
-    ret.nH_nMiss_nFA_nCRs(cc,:)   = [x1s x2s x3s x4s];    
+    ret.nH_nMiss_nFA_nCRs(cc,:)   = sum([x1 x2 x3 x4]);
     
     % compute dprime
-    [ret.dPrimeConf(cc), ret.dPrimeConf_C(cc)] = ...
-    calc_dPrime(x1s,x2s,x3s,x4s);
-
+    ret.dPrimeConf(cc)      = binOut.dPrime;
+    ret.dPrimeConf_C(cc)    = binOut.dPrimeC;   
+    
     % get RT stats per confidence.
+    rts = ret.RTs(trials);
     ret.Hit_RTsStatsConf(cc)     = analyzeRTs(rts(x1));
     ret.CRs_RTsStatsConf(cc)     = analyzeRTs(rts(x2));
     ret.Misses_RTsStatsConf(cc)  = analyzeRTs(rts(x3));
     ret.FA_RTsStatsConf(cc)      = analyzeRTs(rts(x4));
     
-
+    % compute dPrime for faces and scenes
+    types = {'Face','Scene'};
+    for tt = 1:numel(types)
+        type = types{tt};
+        trials2 = ret.([type 'Trials']) & trials;
+        binOut = tabulateBinaryResponses(keyPress(trials2),...
+        1*ret.OldTrials(trials2)+2*ret.NewTrials(trials2),...
+        cond1Key,cond2Key);
+        
+        ret.([type '_dPrimeConf'])(cc)   = binOut.dPrime;
+        ret.([type '_dPrimeConf_C'])(cc) = binOut.dPrimeC;
+    end
 end
 
 ret.EncHitTrialIDs     = ret.EncStimIDAtRet(ret.Hits);
@@ -343,12 +453,13 @@ ret.EncMissRTs         = ret.RTs(ret.Misses);
 
 end
 
+% Other functions.
 function out=tabulateBinaryResponses(responses,correctAns,key1,key2)
 
 out = [];
 fields = {'multipleResp','noResp','Cond1Correct','Cond2Correct',...
     'Cond1InCorrect','Cond2InCorrect','Cond1HR','Cond2HR','Cond1FAR',...
-    'Cond2FAR','Correct','InCorrect','mACC'};
+    'Cond2FAR','Correct','InCorrect','mACC','dPrime','dPrimeC'};
 for ii = 1:numel(fields)
     out.(fields{ii}) = [];
 end
@@ -370,10 +481,10 @@ end
 
 try
     % tabulate correct/incorrect by cond
-    out.Cond1Correct   = strcmp(responses,key1)&(correctAns==1);
-    out.Cond1InCorrect = strcmp(responses,key2)&(correctAns==1);
-    out.Cond2Correct   =  strcmp(responses,key2)&(correctAns==2);
-    out.Cond2InCorrect = strcmp(responses,key1)&(correctAns==2);
+    out.Cond1Correct   = strcmp(responses,key1)&(correctAns==1); % hits
+    out.Cond1InCorrect = strcmp(responses,key2)&(correctAns==1); % misses
+    out.Cond2Correct   =  strcmp(responses,key2)&(correctAns==2); % FA
+    out.Cond2InCorrect = strcmp(responses,key1)&(correctAns==2); % CRs
     
     out.Cond1HR  = sum(out.Cond1Correct)/sum(correctAns==1);  % correct response to cond 1
     out.Cond2HR  = sum(out.Cond2Correct)/sum(correctAns==2);   % correct response to cond 2
@@ -384,15 +495,75 @@ try
     out.InCorrect = out.Cond1InCorrect | out.Cond2InCorrect;
     out.mACC = mean(out.Correct);
     
+    x1           = out.Cond1Correct; % hits
+    x1s          = sum(x1);
+    x2           = out.Cond1InCorrect; % misses
+    x2s          = sum(x2);
+    x3           = out.Cond2InCorrect; % # FA
+    x3s          = sum(x3); % # FA
+    x4           = out.Cond2Correct; % # CRs
+    x4s          = sum(x4);
+    
+    % compute dprime
+    [out.dPrime, out.dPrimeC] = calc_dPrime(x1s,x2s,x3s,x4s);
+    
 catch msg
     keyboard
 end
 
 end
 
+% version when resp and ans match.
+function out=tabulateBinaryResponses2(resp,stim)
+
+out = [];
+fields = {'multipleResp','noResp','Cond1Correct','Cond2Correct',...
+    'Cond1InCorrect','Cond2InCorrect','Cond1HR','Cond2HR','Cond1FAR',...
+    'Cond2FAR','Correct','InCorrect','mACC','dPrime','dPrimeC'};
+for ii = 1:numel(fields)
+    out.(fields{ii}) = [];
+end
+
+% no response trials
+out.noResp = (resp==0);
+
+try
+    % tabulate correct/incorrect by cond
+    out.Cond1Correct   = (resp==1)&(stim==1); % hits
+    out.Cond1InCorrect = (resp==2)&(stim==1); % misses
+    out.Cond2Correct   = (resp==2)&(stim==2); % FA
+    out.Cond2InCorrect = (resp==1)&(stim==2); % CRs
+    
+    out.Cond1HR  = sum(out.Cond1Correct)/sum(stim==1);  % correct response to cond 1
+    out.Cond2HR  = sum(out.Cond2Correct)/sum(stim==2);   % correct response to cond 2
+    out.Cond1FAR = sum(out.Cond1InCorrect)/(sum(out.Cond1InCorrect)+sum(out.Cond1Correct)); % responded as condition 1 (when it was condition 2)
+    out.Cond2FAR = sum(out.Cond2InCorrect)/(sum(out.Cond2InCorrect)+sum(out.Cond2Correct)); % responded as condition 2 (when it was condition 1)
+    
+    out.Correct   = out.Cond1Correct | out.Cond2Correct;
+    out.InCorrect = out.Cond1InCorrect | out.Cond2InCorrect;
+    out.mACC = mean(out.Correct);
+    
+    x1           = out.Cond1Correct; % hits
+    x1s          = sum(x1);
+    x2           = out.Cond1InCorrect; % misses
+    x2s          = sum(x2);
+    x3           = out.Cond2InCorrect; % # FA
+    x3s          = sum(x3); % # FA
+    x4           = out.Cond2Correct; % # CRs
+    x4s          = sum(x4);
+    
+    % compute dprime
+    [out.dPrime, out.dPrimeC] = calc_dPrime(x1s,x2s,x3s,x4s);
+    
+catch msg
+    keyboard
+end
+
+end
 function out=analyzeRTs(RTs)
 out.meanRT = nanmean(RTs);
 out.sdRT = nanstd(RTs);
 out.medianRT = nanmedian(RTs);
 out.kurtosisRT = kurtosis(RTs);
 end
+

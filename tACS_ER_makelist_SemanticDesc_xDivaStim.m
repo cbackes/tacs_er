@@ -348,7 +348,8 @@ PresParams.stimDurationInFrames = PresParams.VideoFrameRate*PresParams.stimDurat
 
 PresParams.FixCrossFrameIDs           = 1; % on the first frame
 PresParams.FixCrossMinNFrames         = 20;% corresponding to 333ms or 2 cycles of 6Hz
-PresParams.InstructionsLength         = 2*60*PresParams.VideoFrameRate; 
+PresParams.InstructionsLength         = 2*60*PresParams.VideoFrameRate;
+% bug here noticed on the mod function. it should be thePath.subjectNum! 
 PresParams.InstructionSet             = mod(thePath.subjectPath,2)==0 +1;
 tacs_er.EncFaceRespID                 = mod(thePath.subjectPath,2)==0 +1;
 tacs_er.EncSceneRespID                = mod(thePath.subjectPath,2)==1 +1;
