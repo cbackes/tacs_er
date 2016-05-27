@@ -1,12 +1,33 @@
 function han = PolarPlot(th,rho,opts)
 % make polar scatter plot for multiple categories
 
-if any(size(th)==1)
-    th = th(:);
-    rho = rho(:);
-    nCategories=1;
-else
-    nCategories     = size(th,2);
+if nargin>=2
+    if isempty(rho)
+        rho = ones(size(th));
+    end
+    if any(size(th)==1)
+        th = th(:);
+        rho = rho(:);
+        nCategories=1;
+    else
+        nCategories     = size(th,2);
+    end
+end
+
+if nargin<2
+    if any(size(th)==1)
+        th = th(:);        
+        nCategories=1;
+    else
+        nCategories     = size(th,2);
+    end
+    opts = [];
+    opts.maxR = 4/3;
+    rho = ones(size(th));    
+end
+
+if nargin==2
+    opts=[];
 end
 
 N       = size(th,1);
@@ -22,16 +43,24 @@ else
     colors = opts.colors;
 end
 
+if ~isfield(opts,'alpha')
+    alpha = 0.7;
+else     
+    alpha = opts.alpha;
+end
+
 % marker sizes
 if ~isfield(opts,'markerSize')
-    markerSize = ones(1,nCategories)*100;
-else
+    markerSize = ones(N,nCategories)*200;
+elseif size(opts.markerSize,1)>1
     markerSize = opts.markerSize;
+else
+    markerSize = opts.markerSize(1)*ones(N,nCategories);
 end
 
 % max Radius
 if ~isfield(opts,'maxR')
-    xLims = [-1 1]*max(rho(:));  
+    xLims = [-1 1]*max(rho(:));
 else
     xLims =  [-1 1]*opts.maxR;
 end
@@ -41,6 +70,12 @@ if ~isfield(opts,'polarGrid')
     polarGrid = 1;
 else
     polarGrid = opts.polarGrid;
+end
+
+if ~isfield(opts,'magText')
+    magText = 1;
+else
+    magText = opts.magText;
 end
 
 % mean Vector
@@ -71,34 +106,52 @@ if polarGrid
     plot([0 0],ylim,'color',lCol,'linewidth',2);
     plot(xLims*0.67,xLims*0.67,'color',lCol,'linewidth',2);
     plot(xLims*0.67,[xLims(2) xLims(1)]*0.67,'color',lCol,'linewidth',2);
-
+    
     % reference circle for magnitude
     t = 0:0.01:2*pi;
     xx = xLims(1)*cos(t)*0.75;
     yy = xLims(1)*sin(t)*0.75;
     plot(xx,yy,'-','color',lCol,'linewidth',1);
-    xpos = xLims(2)*0.75; xstr = round(xpos*100)/100;
-    t=text(xpos,0,num2str(xstr));
-    t.FontSize=18;
-    t.HorizontalAlignment='center';
-    t.VerticalAlignment='top';
+    xpos = xLims(2)*0.75;
 end
 
 % scatter of dots by category
-for jj = 1:nCategories
-    s=scatter(reZ(:,jj),imZ(:,jj),'o');
-    s.MarkerFaceAlpha   = 0.7;
-    s.MarkerEdgeAlpha   = 0.7;
-    s.SizeData          = markerSize(:,jj);
-    s.MarkerEdgeColor   = colors(jj,:);
-    s.MarkerFaceColor   = colors(jj,:);    
+K = 10;
+idx=crossvalind('kfold',N,10);
+for kk = 1:K
+    % re-order categories
+    catVec = randperm(nCategories);
+    for jj = catVec
+        s=scatter(reZ(idx==kk,jj),imZ(idx==kk,jj),'o');
+        s.MarkerFaceAlpha   = alpha;
+        s.MarkerEdgeAlpha   = 0;
+        s.SizeData          = markerSize(idx==kk,jj);
+        s.MarkerEdgeColor   = colors(jj,:);
+        s.MarkerFaceColor   = colors(jj,:);
+    end
 end
+% for jj = 1:nCategories
+%     s=scatter(reZ(:,jj),imZ(:,jj),'o');
+%     s.MarkerFaceAlpha   = alpha;
+%     s.MarkerEdgeAlpha   = 0;
+%     s.SizeData          = markerSize(:,jj);
+%     s.MarkerEdgeColor   = colors(jj,:);
+%     s.MarkerFaceColor   = colors(jj,:);
+% end
 
 % resulting mean vectors
 if meanVecs
     for jj = 1:nCategories
-        plot([0 real(zM(jj))],[0 imag(zM(jj))],'linewidth',5,'color',colors(jj,:)*0.8)
+        plot([0 real(zM(jj))],[0 imag(zM(jj))],'linewidth',5,'color',colors(jj,:)*0.9)
     end
+end
+if magText
+    xpos = xLims(2)*0.75;
+    xstr = round(xpos*100)/100;
+    t=text(xpos,0,num2str(xstr));
+    t.FontSize=18;
+    t.HorizontalAlignment='center';
+    t.VerticalAlignment='top';
 end
 
 if connect

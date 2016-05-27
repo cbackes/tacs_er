@@ -53,10 +53,6 @@ behav_out.retSummary.Scene_dPrime       = nan(nSubjs,1);
 behav_out.retSummary.Scene_dPrime_C     = nan(nSubjs,1);
 
 % reaction time summaries
-behav_out.retSummary.meanHit_RTs        = nan(nSubjs,1);
-behav_out.retSummary.meanCRs_RTs        = nan(nSubjs,1);
-behav_out.retSummary.meanFA_RTs         = nan(nSubjs,1);
-behav_out.retSummary.meanMiss_RTs       = nan(nSubjs,1);
 behav_out.retSummary.medianHit_RTs     = nan(nSubjs,1);
 behav_out.retSummary.medianCRs_RTs     = nan(nSubjs,1);
 behav_out.retSummary.medianFA_RTs      = nan(nSubjs,1);
@@ -157,17 +153,17 @@ for ss = 1:nSubjs
         behav_out.retSummary.nH_nMiss_nFA_nCRs(ss,:,:)  = behav_out.retSubj{ss}.nH_nMiss_nFA_nCRs;
         behav_out.retSummary.nRespByConf(ss,:)          = behav_out.retSubj{ss}.nRespByConf;
         
-        % reaction times
-        behav_out.retSummary.meanHit_RTs(ss)            = behav_out.retSubj{ss}.Hit_RTsStats.meanRT;
-        behav_out.retSummary.meanCRs_RTs(ss)            = behav_out.retSubj{ss}.CRs_RTsStats.meanRT;
-        behav_out.retSummary.meanFA_RTs(ss)             = behav_out.retSubj{ss}.FA_RTsStats.meanRT;
-        behav_out.retSummary.meanMiss_RTs(ss)           = behav_out.retSubj{ss}.Misses_RTsStats.meanRT;
-        
+        % reaction times        
         behav_out.retSummary.medianHit_RTs(ss)          = behav_out.retSubj{ss}.Hit_RTsStats.medianRT;
         behav_out.retSummary.medianCRs_RTs(ss)          = behav_out.retSubj{ss}.CRs_RTsStats.medianRT;
         behav_out.retSummary.medianFA_RTs(ss)           = behav_out.retSubj{ss}.FA_RTsStats.medianRT;
         behav_out.retSummary.medianMiss_RTs(ss)         = behav_out.retSubj{ss}.Misses_RTsStats.medianRT;
         behav_out.retSummary.HitCRs_RTs_TVals(ss)       = behav_out.retSubj{ss}.HitCRs_RTs.tstat;
+        
+        behav_out.retSummary.medianFaceScnHit_RTs(ss,:) = [behav_out.retSubj{ss}.Face_Hit_RTsStats.medianRT, behav_out.retSubj{ss}.Scene_Hit_RTsStats.medianRT];
+        behav_out.retSummary.medianFaceScnCRs_RTs(ss,:) = [behav_out.retSubj{ss}.Face_CRs_RTsStats.medianRT, behav_out.retSubj{ss}.Scene_CRs_RTsStats.medianRT];
+        behav_out.retSummary.medianFaceScnFA_RTs(ss,:)  = [behav_out.retSubj{ss}.Face_FA_RTsStats.medianRT,  behav_out.retSubj{ss}.Scene_FA_RTsStats.medianRT];
+        behav_out.retSummary.medianFaceScnMiss_RTs(ss,:)= [behav_out.retSubj{ss}.Face_Misses_RTsStats.medianRT,behav_out.retSubj{ss}.Scene_Misses_RTsStats.medianRT];
         
         behav_out.retSummary.medianHit_RTsConf(ss,:)    = [behav_out.retSubj{ss}.Hit_RTsStatsConf.medianRT];
         behav_out.retSummary.medianCRs_RTsConf(ss,:)    = [behav_out.retSubj{ss}.CRs_RTsStatsConf.medianRT];

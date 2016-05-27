@@ -41,9 +41,9 @@ a = axes('units','points','position',[100 100 80 200]); hold on;
 x = randn(nSubjs,1)*0.05+0.5;
 y = HR(:,1);
 plot([0.2 0.8], ones(1,2)*mean(y),'linewidth',4,'color','k')
-s=scatter(x,y); 
+s=scatter(x,y);
 s.MarkerFaceAlpha=0.5;
-s.MarkerEdgeAlpha=0.4;
+s.MarkerEdgeAlpha=0;
 s.SizeData          = 120;
 s.MarkerEdgeColor = [119,136,153]/255;
 s.MarkerFaceColor = [119,136,153]/255;
@@ -58,26 +58,26 @@ set(gca,'LineWidth',2)
 % Figure 1: (b) acc by category
 a = axes('units','points','position',[300 100 180 200]); hold on;
 y = HR(:,2:3);
-% 
+%
 % for ii =1:nSubjs
-%     plot([x(ii) x(ii)+1], y(ii,:),'-','color',[0.6 0.6 0.6])   
+%     plot([x(ii) x(ii)+1], y(ii,:),'-','color',[0.6 0.6 0.6])
 % end
 
 plot([0.2 0.8], ones(1,2)*mean(y(:,1)),'linewidth',4,'color','k')
 plot([0.2 0.8]+1, ones(1,2)*mean(y(:,2)),'linewidth',4,'color','k')
 
 % Faces
-s=scatter(x,y(:,1)); 
+s=scatter(x,y(:,1));
 s.MarkerFaceAlpha=0.5;
-s.MarkerEdgeAlpha=0.4;
+s.MarkerEdgeAlpha=0;
 s.SizeData          = 120;
 s.MarkerEdgeColor = [100 200 100]/255;
 s.MarkerFaceColor = [100 200 100]/255;
 
 % Scenes
-s=scatter(x+1,y(:,2)); 
+s=scatter(x+1,y(:,2));
 s.MarkerFaceAlpha   = 0.5;
-s.MarkerEdgeAlpha   = 0.4;
+s.MarkerEdgeAlpha   = 0;
 s.SizeData          = 120;
 s.MarkerEdgeColor   = [200 100 200]/255;
 s.MarkerFaceColor   = [200 100 200]/255;
@@ -99,7 +99,7 @@ figure(1); clf;
 set(gcf,'paperpositionmode','auto','color','white')
 set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
 set(gcf,'position',[200,200,600,400])
-a = axes('units','points','position',[100 200 400 150]); hold on;
+a = axes('units','points','position',[100 150 400 200]); hold on;
 x = randn(nSubjs,1)*0.05+0.5;
 y = squeeze(HR(:,1,:));
 nBars = 5;
@@ -107,7 +107,7 @@ for ii =1:nBars
     xx = x+(ii-1);
     yy = y(:,ii);
     plot([0.2 0.8]+(ii-1), ones(1,2)*mean(yy),'linewidth',4,'color','k')
-    s = scatter(xx,yy); 
+    s = scatter(xx,yy);
     s.MarkerFaceAlpha=0.5;
     s.MarkerEdgeAlpha=0.4;
     s.SizeData          = 120;
@@ -122,7 +122,7 @@ ylabel(' ACC (%) ')
 set(gca,'LineWidth',2)
 
 
-a2 = axes('units','points','position',[100 130 400 50]); hold on;
+a2 = axes('units','points','position',[100 80 400 50]); hold on;
 xa = linspace(0,2*pi,1000); x = cos(xa);
 axes(a2)
 plot(xa./pi*180,x,'k','linewidth',4)
@@ -143,7 +143,7 @@ figure(1); clf;
 set(gcf,'paperpositionmode','auto','color','white')
 set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
 set(gcf,'position',[200,200,600,400])
-a = axes('units','points','position',[100 200 400 150]); hold on;
+a = axes('units','points','position',[100 150 400 200]); hold on;
 x1 = randn(nSubjs,1)*0.02+0.3;
 x2 = randn(nSubjs,1)*0.02+0.7;
 y1 = squeeze(HR(:,2,:));
@@ -156,8 +156,8 @@ for ii =1:nBars
     yy2 = y2(:,ii);
     
     % Faces
-    plot([0.15 0.45]+(ii-1), ones(1,2)*mean(yy1),'linewidth',4,'color','k')    
-    s = scatter(xx1,yy1); 
+    plot([0.15 0.45]+(ii-1), ones(1,2)*mean(yy1),'linewidth',4,'color','k')
+    s = scatter(xx1,yy1);
     s.MarkerFaceAlpha=0.5;
     s.MarkerEdgeAlpha=0.4;
     s.SizeData          = 120;
@@ -166,9 +166,9 @@ for ii =1:nBars
     
     % Scenes
     plot([0.55 0.85]+(ii-1), ones(1,2)*mean(yy2),'linewidth',4,'color','k')
-    s = scatter(xx2,yy2); 
+    s = scatter(xx2,yy2);
     s.MarkerFaceAlpha=0.5;
-    s.MarkerEdgeAlpha=0.4;
+    s.MarkerEdgeAlpha=0;
     s.SizeData          = 120;
     s.MarkerEdgeColor = [200 100 200]/255;
     s.MarkerFaceColor = [200 100 200]/255;
@@ -181,7 +181,7 @@ ylabel(' ACC (%) ')
 set(gca,'LineWidth',2)
 
 
-a2 = axes('units','points','position',[100 130 400 50]); hold on;
+a2 = axes('units','points','position',[100 80 400 50]); hold on;
 xa = linspace(0,2*pi,1000); x = cos(xa);
 axes(a2)
 plot(xa./pi*180,x,'k','linewidth',4)
@@ -191,11 +191,16 @@ set(gca,'xtick',PhasesDeg)
 xlabel(' Encoding Phase (deg)')
 
 print(gcf,'-dpdf',['../plots/tacs_enc_xdiva/Behavior/' 'CategorizationPerfByPhaseStimType_' SubjSelectStr])
+%%
+colors = [100 200 100;200 100 200]/255;
+txtStr = {'Faces','Scenes'};
+makeLegend(colors,txtStr);
+print(gcf,'-dpdf',['../plots/tacs_enc_xdiva/Behavior/FaceScnLegend']);
 
 %% Categorization RTs:
 clearvars -except out behav_out subjs nSubjs dataPath SubjSelectStr PhasesDeg
 rng(1); % for location reproducibility
-RTs = [behav_out.encSummary.medianRTs(subjs)  ... 
+RTs = [behav_out.encSummary.medianRTs(subjs)  ...
     behav_out.encSummary.medianFaceRTs(subjs) behav_out.encSummary.medianSceneRTs(subjs)];
 Dstrs = {'RTs','Face','Scn'};
 disp(array2table(mean(RTs),'variablenames',Dstrs))
@@ -212,9 +217,9 @@ a = axes('units','points','position',[100 100 80 200]); hold on;
 x = randn(nSubjs,1)*0.05+0.5;
 y = RTs(:,1);
 plot([0.2 0.8], ones(1,2)*mean(y),'linewidth',4,'color','k')
-s=scatter(x,y); 
+s=scatter(x,y);
 s.MarkerFaceAlpha=0.5;
-s.MarkerEdgeAlpha=0.4;
+s.MarkerEdgeAlpha=0;
 s.SizeData          = 120;
 s.MarkerEdgeColor = [119,136,153]/255;
 s.MarkerFaceColor = [119,136,153]/255;
@@ -243,7 +248,7 @@ plot([0.2 0.8], ones(1,2)*mean(y(:,1)),'linewidth',4,'color','k')
 plot([0.2 0.8]+1, ones(1,2)*mean(y(:,2)),'linewidth',4,'color','k')
 
 % Faces
-s=scatter(x,y(:,1)); 
+s=scatter(x,y(:,1));
 s.MarkerFaceAlpha=0.5;
 s.MarkerEdgeAlpha=0.4;
 s.SizeData          = 120;
@@ -251,9 +256,9 @@ s.MarkerEdgeColor = [100 200 100]/255;
 s.MarkerFaceColor = [100 200 100]/255;
 
 % Scenes
-s=scatter(x+1,y(:,2)); 
+s=scatter(x+1,y(:,2));
 s.MarkerFaceAlpha   = 0.5;
-s.MarkerEdgeAlpha   = 0.4;
+s.MarkerEdgeAlpha   = 0;
 s.SizeData          = 120;
 s.MarkerEdgeColor   = [200 100 200]/255;
 s.MarkerFaceColor   = [200 100 200]/255;
@@ -275,7 +280,7 @@ figure(1); clf;
 set(gcf,'paperpositionmode','auto','color','white')
 set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
 set(gcf,'position',[200,200,600,400])
-a = axes('units','points','position',[100 200 400 150]); hold on;
+a = axes('units','points','position',[100 150 400 200]); hold on;
 x = randn(nSubjs,1)*0.05+0.5;
 y = RTs;
 nBars = 5;
@@ -283,22 +288,22 @@ for ii =1:nBars
     xx = x+(ii-1);
     yy = y(:,ii);
     plot([0.2 0.8]+(ii-1), ones(1,2)*mean(yy),'linewidth',4,'color','k')
-    s = scatter(xx,yy); 
+    s = scatter(xx,yy);
     s.MarkerFaceAlpha=0.5;
-    s.MarkerEdgeAlpha=0.4;
+    s.MarkerEdgeAlpha=0;
     s.SizeData          = 120;
     s.MarkerEdgeColor = [119,136,153]/255;
     s.MarkerFaceColor = [119,136,153]/255;
 end
 set(gca,'fontsize',20,'xtick',[0.5:5],'xticklabel',[])%,'xtick',[0.5:5],'xticklabel',PhasesDeg)
-ylim([0.5 1])
+ylim([0.6 1])
 xlim([0 5])
 set(gca,'ytick',[0.5:0.2:1])
 ylabel(' RTs (s) ')
 set(gca,'LineWidth',2)
 
 
-a2 = axes('units','points','position',[100 130 400 50]); hold on;
+a2 = axes('units','points','position',[100 80 400 50]); hold on;
 xa = linspace(0,2*pi,1000); x = cos(xa);
 axes(a2)
 plot(xa./pi*180,x,'k','linewidth',4)
@@ -319,7 +324,7 @@ figure(1); clf;
 set(gcf,'paperpositionmode','auto','color','white')
 set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
 set(gcf,'position',[200,200,600,400])
-a = axes('units','points','position',[100 200 400 150]); hold on;
+a = axes('units','points','position',[100 150 400 200]); hold on;
 x1 = randn(nSubjs,1)*0.02+0.3;
 x2 = randn(nSubjs,1)*0.02+0.7;
 y1 = squeeze(RTs(:,2,:));
@@ -338,19 +343,19 @@ for ii =1:nBars
             plot([xx1(ii) xx2(ii)], [yy1(jj) yy2(jj)],'-','color',[0.6 0.6 0.6])
         end
     end
-
+    
     % Faces
-    plot([0.15 0.45]+(ii-1), ones(1,2)*mean(yy1),'linewidth',4,'color','k')    
-    s = scatter(xx1,yy1); 
+    plot([0.15 0.45]+(ii-1), ones(1,2)*mean(yy1),'linewidth',4,'color','k')
+    s = scatter(xx1,yy1);
     s.MarkerFaceAlpha=0.5;
-    s.MarkerEdgeAlpha=0.4;
+    s.MarkerEdgeAlpha=0;
     s.SizeData          = 120;
     s.MarkerEdgeColor = [100 200 100]/255;
     s.MarkerFaceColor = [100 200 100]/255;
     
     % Scenes
     plot([0.55 0.85]+(ii-1), ones(1,2)*mean(yy2),'linewidth',4,'color','k')
-    s = scatter(xx2,yy2); 
+    s = scatter(xx2,yy2);
     s.MarkerFaceAlpha=0.5;
     s.MarkerEdgeAlpha=0.4;
     s.SizeData          = 120;
@@ -358,14 +363,14 @@ for ii =1:nBars
     s.MarkerFaceColor = [200 100 200]/255;
 end
 set(gca,'fontsize',20,'xtick',[0.5:5],'xticklabel',[])%,'xtick',[0.5:5],'xticklabel',PhasesDeg)
-ylim([0.5 1])
+ylim([0.6 1])
 xlim([0 5])
 set(gca,'ytick',[0.5:0.2:1])
 ylabel(' RTs (s) ')
 set(gca,'LineWidth',2)
 
 
-a2 = axes('units','points','position',[100 130 400 50]); hold on;
+a2 = axes('units','points','position',[100 80 400 50]); hold on;
 xa = linspace(0,2*pi,1000); x = cos(xa);
 axes(a2)
 plot(xa./pi*180,x,'k','linewidth',4)
@@ -407,7 +412,7 @@ a = axes('units','points','position',[100 100 80 200]); hold on;
 x = randn(nSubjs,1)*0.05+0.5;
 y = D(:,1);
 plot([0.2 0.8], ones(1,2)*mean(y),'linewidth',4,'color','k')
-s=scatter(x,y); 
+s=scatter(x,y);
 
 s.MarkerFaceAlpha=0.5;
 s.MarkerEdgeAlpha=0.4;
@@ -438,7 +443,7 @@ plot([0.2 0.8], ones(1,2)*mean(y(:,1)),'linewidth',4,'color','k')
 plot([0.2 0.8]+1, ones(1,2)*mean(y(:,2)),'linewidth',4,'color','k')
 
 % Faces
-s=scatter(x,y(:,1)); 
+s=scatter(x,y(:,1));
 s.MarkerFaceAlpha=0.5;
 s.MarkerEdgeAlpha=0.4;
 s.SizeData          = 120;
@@ -446,7 +451,7 @@ s.MarkerEdgeColor = [100 200 100]/255;
 s.MarkerFaceColor = [100 200 100]/255;
 
 % Scenes
-s=scatter(x+1,y(:,2)); 
+s=scatter(x+1,y(:,2));
 s.MarkerFaceAlpha   = 0.5;
 s.MarkerEdgeAlpha   = 0.4;
 s.SizeData          = 120;
@@ -542,7 +547,7 @@ disp(array2table(nanmean(DPCS),'variablenames',{'Low','Med','High'}))
 
 %% RTs
 clearvars -except out behav_out subjs nSubjs dataPath SubjSelectStr
-
+rng(1)
 strs    = {'medianHit_RTs','medianMiss_RTs','medianFA_RTs','medianCRs_RTs'};
 strs2   = {'Hits','Misses','FA','CRs'};
 nRTConds = numel(strs);
@@ -553,37 +558,36 @@ for ii = 1:nRTConds
 end
 figure(1); clf;
 set(gcf,'paperpositionmode','auto','color','white')
-set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 500 300])
-set(gcf,'position',[100,100,500,300])
+set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
+set(gcf,'position',[100,100,600,400])
 
 dx = 80;
-xPosCore = [100:dx:500];
+xPosCore = [150:dx:500];
 xPos = [xPosCore ];
 a     = zeros(nRTConds,1);
 for ii =1:nRTConds
-    a(ii)=axes('units','points','position',[xPos(ii) 50 60 200]);
+    a(ii)=axes('units','points','position',[xPos(ii) 100 60 200]);
 end
-yLims = [0.5 2];
+yLims = [0.8 2];
 yTicks1 = [0:0.5:2.5];
+x = randn(nSubjs,1)*0.1+0.5;
 for ii=1:nRTConds
     axes(a(ii))
     %set(gca,'Position',[xPos(ii) 100 80 250])
     y = RTs(:,ii);
+    s = scatter(x,y); hold on;
+    s.MarkerFaceAlpha=0.5;
+    s.MarkerEdgeAlpha=0.4;
+    s.SizeData          = 120;
+    s.MarkerEdgeColor = [119,136,153]/255;
+    s.MarkerFaceColor = [119,136,153]/255;
     
-    for ss=1:nSubjs
-        s = scatter(ss,y(ss)); hold on;
-        s.MarkerFaceAlpha=0.8;
-        s.MarkerEdgeAlpha=0.6;
-        s.SizeData          = 50;
-        s.MarkerEdgeColor = [0.45 [0.75,0.9]*ss/nSubjs];
-        s.MarkerFaceColor = [0.45 [0.75,0.9]*ss/nSubjs];
-    end
     
     set(gca,'fontsize',20,'xTick','')
-    plot([1 nSubjs], ones(1,2)*mean(y),'linewidth',4,'color','k')
+    plot([0.2 0.8], ones(1,2)*mean(y),'linewidth',4,'color','k')
     xlabel(strs2{ii})
     ylim(yLims)
-    xlim([0 nSubjs+1])
+    xlim([0 1])
     if ii==1
         set(gca,'ytick',yTicks1)
         ylabel(' RTs (s) ')
@@ -604,6 +608,89 @@ p = [p1;p2;p3];
 t = [t1.tstat;t2.tstat;t3.tstat];
 disp(table(t,p,'rownames',{'HvsM','HvFA','HvCRs'}))
 
+%% Retrieval RTs by Stimulys Category 
+clearvars -except out behav_out subjs nSubjs dataPath SubjSelectStr
+rng(1)
+strs    = {'medianFaceScnHit_RTs','medianFaceScnMiss_RTs','medianFaceScnFA_RTs','medianFaceScnCRs_RTs'};
+strs2   = {'Hits','Misses','FA','CRs'};
+nRTConds = numel(strs);
+
+RTsF       = zeros(nSubjs,nRTConds);
+RTsS       = zeros(nSubjs,nRTConds);
+for ii = 1:nRTConds
+    RTsF(:,ii) = behav_out.retSummary.(strs{ii})(subjs,1);
+    RTsS(:,ii) = behav_out.retSummary.(strs{ii})(subjs,2);
+end
+figure(1); clf;
+set(gcf,'paperpositionmode','auto','color','white')
+set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
+set(gcf,'position',[100,100,600,400])
+
+dx = 110;
+xPosCore = [100:dx:500];
+xPos = [xPosCore ];
+a     = zeros(nRTConds,1);
+for ii =1:nRTConds
+    a(ii)=axes('units','points','position',[xPos(ii) 100 100 200]);
+end
+yLims = [0.8 2];
+yTicks1 = [0:0.5:2.5];
+x1 = randn(nSubjs,1)*0.03+0.3;
+x2 = randn(nSubjs,1)*0.03+0.7;
+for ii=1:nRTConds
+    axes(a(ii)); hold on;
+    y1  = RTsF(:,ii);
+    y2  = RTsS(:,ii);
+    
+    for jj =1:nSubjs
+    if y1(jj)>y2(jj)
+        plot([x1(jj) x2(jj)], [y1(jj) y2(jj)],'-','color',[0.8 0.2 0.2])
+    else
+        plot([x1(jj) x2(jj)], [y1(jj) y2(jj)],'-','color',[0.6 0.6 0.6])
+    end
+    end
+
+    % Faces
+    s   = scatter(x1,y1); 
+    plot([0.2 0.4], ones(1,2)*mean(y1),'linewidth',4,'color','k');    
+    s.MarkerFaceAlpha   = 0.5;
+    s.MarkerEdgeAlpha   = 0.4;
+    s.SizeData          = 120;
+    s.MarkerEdgeColor = [100 200 100]/255;
+    s.MarkerFaceColor = [100 200 100]/255;
+    
+    set(gca,'fontsize',20,'xTick','')    
+    xlabel(strs2{ii})
+    ylim(yLims)
+    xlim([0 1])
+    
+    % Scenes    
+    s   = scatter(x2,y2);
+    plot([0.6 0.8], ones(1,2)*mean(y2),'linewidth',4,'color','k')    
+    s.MarkerFaceAlpha   = 0.5;
+    s.MarkerEdgeAlpha   = 0.4;
+    s.SizeData          = 120;
+    s.MarkerEdgeColor = [200 100 200]/255;
+    s.MarkerFaceColor = [200 100 200]/255;
+    
+    set(gca,'fontsize',20,'xTick','')
+    
+    xlabel(strs2{ii})
+    ylim(yLims)
+    xlim([0 1])
+    
+    if ii==1
+        set(gca,'ytick',yTicks1)
+        ylabel(' RTs (s) ')
+    end
+    if ii>1
+        set(gca,'ycolor','none')
+    end
+    set(gca,'LineWidth',2)
+end
+
+print(gcf,'-dpdf',['../plots/tacs_enc_xdiva/Behavior/' 'RetRTsCategory' SubjSelectStr])
+
 %% RTs by Confidence
 clearvars -except out behav_out subjs nSubjs dataPath SubjSelectStr
 strs    = {'medianHit_RTsConf','medianMiss_RTsConf','medianFA_RTsConf','medianCRs_RTsConf'};
@@ -617,17 +704,17 @@ end
 figure(1); clf;
 set(gcf,'paperpositionmode','auto','color','white')
 set(gcf,'paperUnits','points','papersize',[600 400],'paperposition',[0 0 600 400])
-set(gcf,'position',[100,150,500,250])
+set(gcf,'position',[100,150,600,400])
 
-dx = 90;
-xPosCore = [80:dx:600];
+dx = 120;
+xPosCore = [100:dx:600];
 xPos = [xPosCore ];
 a     = zeros(nRTConds,1);
 for ii =1:nRTConds
-    a(ii)=axes('units','points','position',[xPos(ii) 50 80 180]);
+    a(ii)=axes('units','points','position',[xPos(ii) 100 100 200]);
 end
 yLims = [0.5 2.5];
-yTicks1 = [0:0.5:2.5];
+yTicks1 = [0:1:2.5];
 %
 for ii=1:nRTConds
     axes(a(ii));
@@ -751,7 +838,8 @@ print(gcf, '-dpdf',['../plots/tacs_enc_xdiva/Phase_HitMiss/' 'H-MPropByPhase' Su
 %% Hit Rate by phase
 clearvars -except out behav_out subjs nSubjs dataPath SubjSelectStr
 
-X = out.HR_ByPhase(subjs,:);
+X = out.HRByPhase(subjs,:);
+%X = out.HRByPhase(subjs,:)-repmat(mean(out.HRByPhase(subjs,:),2),[1,5]);
 xa = linspace(0,2*pi,1000);
 x = cos(xa);
 
@@ -783,7 +871,7 @@ ylabel(' Hit Rate ' )
 print(gcf, '-dpdf', ['../plots/tacs_enc_xdiva/Phase_HitMiss/' 'HitsRatepByPhase' SubjSelectStr]);
 
 % mean Vectors
-Z=X.*exp(1j*repmat([36:72:360]./180*pi,[nSubjs,1]));
+Z= X.*exp(1j*repmat([36:72:360]./180*pi,[nSubjs,1]));
 mZ = mean(Z,2);
 th = mod(angle(mZ),2*pi); rho = abs(mZ);
 opts = [];
