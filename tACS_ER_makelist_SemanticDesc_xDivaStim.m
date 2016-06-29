@@ -39,7 +39,7 @@ function [tacs_er] = tACS_ER_makelist_SemanticDesc_xDivaStim(thePath)
 % Stimuli           -> key, matrix map of stimuli's names to image matrix.
 
 %------------------------------------------------------------------------%
-% Author:       Alex Gonzalez
+% Author:       Alex Gonzalez                       
 % Created:      Jan, 2016
 % LastUpdate:   April 6, 2016
 %------------------------------------------------------------------------%
@@ -76,7 +76,7 @@ maxNumConsecutiveOld = 8;   % maximum number of old trials in a row
 % end
 
 % changed on 4/6/16 to make it work on different matlab versions. 
-s = RandStream.create('mt19937ar','seed',thePath.subjNum);
+s = RandStream.create('mt19937ar','seed',thePath.subjNum);                          % what is RandStream function doing?
 RandStream.setGlobalStream(s)
 
 %% load data names
@@ -86,8 +86,8 @@ temp = dir('*.jpg');
 count = 1;
 ScenesMat = cell(numel(temp),1);
 for n = 1:size(temp,1)
-    ScenesMat{n} = zeros(stimSize(1),stimSize(2),'uint8');
-    try
+    ScenesMat{n} = zeros(stimSize(1),stimSize(2),'uint8');                          % what is the output if ScenesMat?
+    try                                                                             % purpose of zeros function here?
         x=imread(temp(n).name); %check if readable
         ScenesMat{n} = imresize(x(:,:,1),2); % only resizing case for xdiva
         SceneNames(count) = temp(n);
@@ -122,14 +122,14 @@ FaceNames = {FaceNames.name}';
 [FaceNames,index] = Shuffle(FaceNames);
 FacesMat = FacesMat(index);
 
-StimObj = containers.Map( [FaceNames; SceneNames], [FacesMat; ScenesMat]);
+StimObj = containers.Map( [FaceNames; SceneNames], [FacesMat; ScenesMat]);          % what does this do?
 
 %% Encoding
 % Equal numbers of faces and scenes: #N encoding trials/2 per type
 % Each block will have one of each of stimuli, for a total of # of blocks x
 % # of unique stimuli.
 %
-% Oddball can be in 4 locations
+% Oddball can be in 4 locations                                                     % what is oddball?
 % Each stimuli will be associated with one, and then allocated across blocks
 % such that the same stimuli appears only once with the associted oddball
 %
@@ -157,16 +157,16 @@ EncStimUniqueIDs = zeros(nEncTrials,2); EncStimUniqueIDs(:,1)=1:nEncTrials;
 % assign face/scence trials
 for bb = 1:nEncBlocks
     TrialBlockID = ((bb-1)*nEncTrialsBlock+1):bb*nEncTrialsBlock;
-    FaceTrials  = datasample(TrialBlockID,nFacesEncBlock,'replace',false);
+    FaceTrials  = datasample(TrialBlockID,nFacesEncBlock,'replace',false);                  % ?
     SceneTrials = setdiff(TrialBlockID,FaceTrials);
     EncBlockID(TrialBlockID) = bb;
     EncStimType(FaceTrials)  = 1;
     EncStimType(SceneTrials) = 2;
     
     % assign individial stimuli to trials
-    FaceBlockUniqueID        = randperm(nFacesEncBlock,nFacesEncBlock);
+    FaceBlockUniqueID        = randperm(nFacesEncBlock,nFacesEncBlock);             % returns row vector with all faces in encoding block?
     ScnBlockUniqueID         = randperm(nScenesEncBlock,nScenesEncBlock);
-    EncStimUniqueIDs(FaceTrials,2) = FaceBlockUniqueID;
+    EncStimUniqueIDs(FaceTrials,2) = FaceBlockUniqueID;                             % ?
     EncStimUniqueIDs(SceneTrials,2) = ScnBlockUniqueID+nFacesEncBlock;
     
     EncStimNames(FaceTrials)  = EncFaces(FaceBlockUniqueID);
